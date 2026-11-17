@@ -63,8 +63,8 @@ Everything below runs on an NVIDIA GPU (12 GB is enough), in this order:
 You need an up-to-date NVIDIA driver (supporting CUDA 13.2), Python 3.12 or 3.13, Git, and about 25 GB of free disk space. In a terminal:
 
 ```bash
-git clone https://github.com/adrianapsay/cs289-final-project.git
-cd cs289-final-project
+git clone https://github.com/adrianapsay/chess-post-training.git
+cd chess-post-training
 python -m venv .venv
 .venv\Scripts\activate
 pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cu132
@@ -81,8 +81,8 @@ setx STOCKFISH_PATH "C:\path\to\stockfish.exe"
 
 The course gave us Databricks credits for an NVIDIA A10G (24 GB). The notebooks are the same: their first code cell installs what Databricks is missing (our pinned libraries and Stockfish 19) and does nothing on other machines. Databricks keeps its own PyTorch, which matches its GPU.
 
-1. **Once:** in Databricks, choose **New → More → Git folder** and paste the repo URL. Link GitHub under **Settings → Linked accounts** so you can push.
-2. **Once:** git does not track data or models, so upload these into the same folders inside the Git folder: `data/processed/` (`train.parquet`, `val.parquet`, `dpo_pairs.jsonl`, about 30 MB) and `checkpoints/sft_v1/` (from the team drive).
+1. **Once:** Adrian's copy of the repo in Databricks is shared with the team, and the uploaded data and models live there, so open it from your workspace and use it. If you need your own copy, open [this link to create the Git folder](https://dbc-fd89e1b5-e4fc.cloud.databricks.com/browse/folders/home?addGit=&o=7474659242886734&gitUrl=https%3A%2F%2Fgithub.com%2Fadrianapsay%2Fchess-post-training&gitProvider=gitHub). Either way, link GitHub under **Settings → Linked accounts** so you can push.
+2. **Once, in a new copy only:** git does not track data or models, so upload these into the same folders inside the Git folder: `data/processed/` (`train.parquet`, `val.parquet`, `dpo_pairs.jsonl`, about 30 MB) and `checkpoints/sft_v1/` (from the team drive).
 3. **Each run:** click **Pull**, open the notebook, choose **Serverless GPU → Small (1xA10)**, and click **Run all**. For long training runs, run the notebook as a job instead (**New → Job**, type **Notebook**, compute **Serverless GPU**), so the browser tab can close.
 4. **After each run:** choose **Terminate** in the compute menu so the GPU stops billing, then commit and push the results from the Git folder.
 
