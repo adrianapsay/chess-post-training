@@ -77,6 +77,17 @@ Then install Stockfish, the chess engine we use to score moves. Download it from
 setx STOCKFISH_PATH "C:\path\to\stockfish.exe"
 ```
 
+### On Databricks instead
+
+The course gave us Databricks credits for an NVIDIA A10G (24 GB). The notebooks are the same: their first code cell installs what Databricks is missing (our pinned libraries and Stockfish 19) and does nothing on other machines. Databricks keeps its own PyTorch, which matches its GPU.
+
+1. **Once:** in Databricks, choose **New → More → Git folder** and paste the repo URL. Link GitHub under **Settings → Linked accounts** so you can push.
+2. **Once:** git does not track data or models, so upload these into the same folders inside the Git folder: `data/processed/` (`train.parquet`, `val.parquet`, `dpo_pairs.jsonl`, about 30 MB) and `checkpoints/sft_v1/` (from the team drive).
+3. **Each run:** click **Pull**, open the notebook, choose **Serverless GPU → Small (1xA10)**, and click **Run all**. For long training runs, run the notebook as a job instead (**New → Job**, type **Notebook**, compute **Serverless GPU**), so the browser tab can close.
+4. **After each run:** choose **Terminate** in the compute menu so the GPU stops billing, then commit and push the results from the Git folder.
+
+Use only the Small size; Medium and Large cost far more. Our spending is on the course's usage dashboard (the link is in the Databricks student guide; our group ID came by email). Training records the GPU name with its GPU-hours, so compare A10G and laptop runs by tokens seen rather than hours.
+
 ### Run the notebooks
 
 Open each notebook in VS Code, choose the `.venv` kernel, and click **Run All**. Wait for each one to finish before starting the next.
