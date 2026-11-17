@@ -12,9 +12,10 @@ import os
 import re
 import subprocess
 import sys
+import sysconfig
 import tarfile
 import urllib.request
-from importlib.metadata import PackageNotFoundError, version
+from importlib.metadata import PackageNotFoundError, distributions, version
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -24,15 +25,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # (transformers, trl, peft, datasets, accelerate, bitsandbytes, chess) gets our pinned version.
 KEEP_DATABRICKS_VERSION = ["torch", "pandas", "matplotlib", "jupyter", "ipywidgets", "pytest"]
 
-# The libraries whose version must match the pins. If one was imported before the
-# install, the old version stays loaded until Python restarts.
-PINNED_IMPORTS = ["transformers", "trl", "peft", "datasets", "accelerate", "chess"]
+# Extra limits on Databricks only. Our datasets version needs pyarrow 24+, and Databricks'
+# own Spark client (databricks-connect) needs pyarrow below 25.
+DATABRICKS_ONLY = ["pyarrow>=24,<25"]
 
 # The same Stockfish release (19) as on our other machines, so engine scores match.
 STOCKFISH_URL = ("https://github.com/official-stockfish/Stockfish/releases/download/"
                  "sf_19/stockfish-linux-x86-64-universal.tar.gz")
 STOCKFISH_DIR = Path("/tmp/stockfish")  # the machine's own disk: downloaded again in each new session
-STOCKFISH_BINARY = STOCKFISH_DIR / "stockfish" / "stockfish-linux-x86-64-universal"
+STOCKFISH_BINARY = STOCKFISH_DIR / "stockfish" / "stockfish-linux-x86-64-universal"  # engine.py looks here too
 
 
 def on_databricks():
@@ -40,20 +41,28 @@ def on_databricks():
 
 
 def setup_databricks():
-    """On Databricks, install the pinned packages and Stockfish for this session. Elsewhere, do nothing."""
+    """On Databricks, install the pinned packages and Stockfish for this session. Elsewhere, do nothing.
+
+    If the install changed any package, Python restarts once so that no old version stays
+    loaded in memory. Everything set up here survives the restart.
+    """
     if not on_databricks():
         return
-    install_packages()
+    add_src_to_path()
     install_stockfish()
-    os.environ["STOCKFISH_PATH"] = str(STOCKFISH_BINARY)
+    changed = install_packages()
     print(f"Ready: pinned packages installed, keeping Databricks' torch {version('torch')}; "
           f"Stockfish at {STOCKFISH_BINARY}")
+    if changed:
+        print("Restarting Python so the new versions load. If the notebook stops here, click Run all again.")
+        from databricks.sdk.runtime import dbutils
+        dbutils.library.restartPython()
 
 
 def databricks_requirements():
     """The lines of requirements.txt to install on Databricks: all pins except KEEP_DATABRICKS_VERSION.
 
-    `-e .` is skipped too: the notebook's setup cell puts src/ on the import path instead.
+    `-e .` is skipped too: add_src_to_path() makes our code importable instead.
     """
     lines = []
     for line in (REPO_ROOT / "requirements.txt").read_text().splitlines():
@@ -66,13 +75,12 @@ def databricks_requirements():
     return lines
 
 
+def installed_versions():
+    return {dist.metadata["Name"].lower(): dist.version for dist in distributions()}
+
+
 def install_packages():
-    stale = [name for name in PINNED_IMPORTS if name in sys.modules]
-    if stale:
-        raise RuntimeError(
-            f"{', '.join(stale)} were imported before this setup, so the wrong versions may be loaded. "
-            "Run dbutils.library.restartPython(), then run this cell again before any other."
-        )
+    """Install the pins with pip. Returns True if any installed package changed."""
     # Pin Databricks' own versions too, so pip can never replace them (it stops with an error instead).
     keep = []
     for name in KEEP_DATABRICKS_VERSION:
@@ -80,8 +88,16 @@ def install_packages():
             keep.append(f"{name}=={version(name)}")
         except PackageNotFoundError:
             pass
+    before = installed_versions()
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet",
-                           *databricks_requirements(), *keep])
+                           *databricks_requirements(), *DATABRICKS_ONLY, *keep])
+    return installed_versions() != before
+
+
+def add_src_to_path():
+    """Make src/ importable for the rest of the session, including after a Python restart."""
+    pth_file = Path(sysconfig.get_paths()["purelib"]) / "chesslm_src.pth"
+    pth_file.write_text(str(REPO_ROOT / "src") + "\n")
 
 
 def install_stockfish():

@@ -6,6 +6,8 @@ import shutil
 import chess
 import chess.engine
 
+from chesslm.databricks import STOCKFISH_BINARY
+
 # A forced mate is scored as a very large advantage. Losses are capped (cp_loss_cap) anyway.
 MATE_SCORE = 10_000
 
@@ -14,10 +16,11 @@ def find_stockfish(configured_path=None):
     """Return the Stockfish binary path.
 
     Checks, in order: the path from the config, the STOCKFISH_PATH environment
-    variable, then `stockfish` on the system PATH. Nothing is hard-coded, so the
-    same code works on a Mac, Colab, and Windows.
+    variable, `stockfish` on the system PATH, then where the Databricks setup puts it.
+    The same code works on a Mac, Windows, and Databricks.
     """
-    path = configured_path or os.environ.get("STOCKFISH_PATH") or shutil.which("stockfish")
+    path = (configured_path or os.environ.get("STOCKFISH_PATH") or shutil.which("stockfish")
+            or (str(STOCKFISH_BINARY) if STOCKFISH_BINARY.exists() else None))
     if not path or not os.path.exists(path):
         raise FileNotFoundError(
             "Stockfish not found. Install it (brew/apt install stockfish) "

@@ -18,3 +18,14 @@ def test_training_and_grading_libraries_use_our_pins():
 def test_setup_does_nothing_off_databricks():
     if not on_databricks():
         assert setup_databricks() is None
+
+
+def test_stockfish_found_where_the_databricks_setup_puts_it(tmp_path, monkeypatch):
+    import chesslm.engine as engine
+
+    binary = tmp_path / "stockfish"
+    binary.write_text("")
+    monkeypatch.delenv("STOCKFISH_PATH", raising=False)
+    monkeypatch.setattr(engine.shutil, "which", lambda name: None)
+    monkeypatch.setattr(engine, "STOCKFISH_BINARY", binary)
+    assert engine.find_stockfish() == str(binary)
