@@ -80,7 +80,9 @@ def parse_move(text, board):
     Returns (move, reason): reason is "legal", "illegal" (it looks like a move but
     isn't allowed here), or "unparseable" (no move found). The move is None unless legal.
     Both notations are accepted, whichever one the model was asked for.
+    HTML tags are ignored: the base model sometimes answers "<h2>Rd7</h2>".
     """
+    text = re.sub(r"<[^>]*>", " ", text)
     for token in text.split():
         token = clean_token(token)
         if UCI_PATTERN.fullmatch(token.lower()):

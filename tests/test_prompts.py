@@ -23,6 +23,8 @@ TWO_KNIGHTS = "4k3/8/8/8/8/8/8/1N2KN2 w - - 0 1"      # knights on b1 and f1 can
     (chess.STARTING_FEN, "**Nf3**", "g1f3", "legal"),
     (chess.STARTING_FEN, "1. e4", "e2e4", "legal"),
     (chess.STARTING_FEN, "1.e4", "e2e4", "legal"),
+    (chess.STARTING_FEN, "<h2>Nf3</h2>", "g1f3", "legal"),  # HTML tags are ignored...
+    (chess.STARTING_FEN, "<h2>...e4</h2>", "e2e4", "legal"),  # ...so the "h2" in "<h2>" is not read as a move
     (chess.STARTING_FEN, "e4 or d4", "e2e4", "legal"),  # the first move counts
     # check and checkmate symbols
     (SCHOLARS_MATE, "Qxf7#", "h5f7", "legal"),

@@ -14,6 +14,7 @@ import subprocess
 import sys
 import sysconfig
 import tarfile
+import tempfile
 import urllib.request
 from importlib.metadata import PackageNotFoundError, distributions, version
 from pathlib import Path
@@ -89,8 +90,11 @@ def install_packages():
         except PackageNotFoundError:
             pass
     before = installed_versions()
+    # Run pip from the machine's local temp folder, not the notebook's folder: right after a
+    # session starts, a new process can fail to see the /Workspace folder ("No such file or directory").
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet",
-                           *databricks_requirements(), *DATABRICKS_ONLY, *keep])
+                           *databricks_requirements(), *DATABRICKS_ONLY, *keep],
+                          cwd=tempfile.gettempdir())
     return installed_versions() != before
 
 
