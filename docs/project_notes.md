@@ -290,6 +290,10 @@ A random legal move solves 5.6%. With 1,000 puzzles, the 95% margin of error at 
 - **Also reported:** how often the human move and Stockfish's move agree in the training positions, which shows how much the training data actually changes.
 - **Results:** the player's move equals Stockfish's in only 42.7% of the 20,000 training positions, so the experiment changed 57.3% of the answers. Yet `sft_stockfish` scores about the same as `sft_v1`: 7.3% vs. 7.8%, legal 71.5% vs. 72.2%; 27 puzzles are solved only by `sft_stockfish` and 32 only by `sft_v1` (p = 0.6, no significant difference). It is far better than the base model (68 vs. 23, p = 2.5 × 10⁻⁶).
 - **What it suggests:** with 20,000 examples, the model does not learn *which* move is best from either kind of answer; it learns the answer format and plausible-looking moves. Notebook 11's "same as Stockfish" and "same as the player" columns will show whether its moves changed in ordinary positions.
+![Puzzle accuracy, legal-move rate and ACPL of base, sft_v1 and sft_stockfish](../results/figures/sft_stockfish/puzzle_metrics.png)
+
+*`results/figures/sft_stockfish/puzzle_metrics.png`.* Both SFT models are far above the base model on every metric, and nearly identical to each other: 7.8% vs. 7.3% accuracy, 72.2% vs. 71.5% legal answers, ACPL 793 vs. 799 (lower is better).
+
 - **Figures and tables** (`results/figures/sft_stockfish/`): `training_data` (how often the two answers agree), `training_loss.png`, `puzzle_results`, `paired_comparison`, `puzzle_metrics.png`, `accuracy_by_band.png`, `answer_outcomes.png`.
 
 ### 09 · DPO on the SFT model's own mistakes (`dpo_v2`, `dpo_v3`)
@@ -303,6 +307,16 @@ A random legal move solves 5.6%. With 1,000 puzzles, the 95% margin of error at 
 - **Results:** `dpo_v2` scores 4.4%, significantly below `sft_v1` (29 vs. 63, p = 0.0005) and not significantly different from `dpo_v1` (35 vs. 50, p = 0.13). `dpo_v3` scores 6.7% with 72.9% legal answers: significantly better than `dpo_v2` (50 vs. 27, p = 0.012) and not significantly different from `sft_v1` (15 vs. 26, p = 0.12).
 - **What the training logs show:** the model learned to separate the pairs in both runs (it preferred the chosen answer in 83% of training pairs for `dpo_v2` and 91% for `dpo_v3` by the end). In `dpo_v2`, however, the probability of Stockfish's move *fell* (log-probability −4.19 → −5.51), the same failure as `dpo_v1`: DPO pushed the rejected answer down faster than the chosen one, and lowered both. In `dpo_v3`, the SFT loss held the chosen move's probability steady (−4.19 → −4.22) while the model's own mistakes fell to about half their SFT probability. This is why `dpo_v3` keeps SFT's accuracy and legality, but nothing in it pushes the best move *up*, so it does not improve on SFT.
 - **So:** changing the rejected answers alone did not help; the SFT loss is what prevented the damage.
+
+![Puzzle accuracy, legal-move rate and ACPL of sft_v1 and the three DPO models](../results/figures/dpo_v3/puzzle_metrics.png)
+
+*`results/figures/dpo_v3/puzzle_metrics.png`.* `dpo_v2` (own mistakes as rejected answers) falls below `dpo_v1` in accuracy and legality; adding the SFT loss (`dpo_v3`) brings both back to `sft_v1`'s level (6.7% vs. 7.8%, not a significant difference; 72.9% vs. 72.2% legal).
+
+![dpo_v2 training diagnostics](../results/figures/dpo_v2/dpo_diagnostics.png)
+
+![dpo_v3 training diagnostics](../results/figures/dpo_v3/dpo_diagnostics.png)
+
+*`dpo_v2/dpo_diagnostics.png` (top) and `dpo_v3/dpo_diagnostics.png` (bottom).* **Left panels:** how often the model gives the chosen answer (Stockfish's move) a higher probability than the rejected one (its own mistake), relative to SFT; 50% means no preference. Both runs learn this quickly, on training pairs and on held-out pairs (about 85% for `dpo_v2`, about 90% for `dpo_v3`). **Right panels:** the probability of each answer relative to the SFT model, on a log scale (1× = unchanged). In `dpo_v2`, both fall: the mistakes to about 0.04× and Stockfish's move to about 0.3×, so the model becomes *less* likely to play the best move. In `dpo_v3`, Stockfish's move stays at about 1× and only the mistakes fall (to about 0.55×). This is the effect of the SFT loss, and also why `dpo_v3` does not improve on SFT: nothing raises the best move above its SFT probability.
 - **Figures and tables:** `results/figures/dpo_mistake_pairs/` (`pairs`: what the mistakes are; `rejected_move_loss.png`: how much the legal mistakes lose), and in `results/figures/dpo_v2/` and `dpo_v3/`: `dpo_diagnostics.png` (left: how often the chosen answer is preferred; right: the probability of the chosen and rejected answers relative to SFT), `training_loss.png`, `puzzle_results`, `paired_comparison`, `puzzle_metrics.png`, `accuracy_by_band.png`, `answer_outcomes.png`.
 
 ### 10 · RL with a KL penalty and an adjusted reward (`grpo_v2`, `grpo_v3`)
@@ -314,7 +328,19 @@ A random legal move solves 5.6%. With 1,000 puzzles, the 95% margin of error at 
   - `grpo_v3`: the KL penalty and a new reward: −0.5 for an illegal or unparseable answer, and 1 − (centipawn loss / 1000) for a legal move, with no bonus for legality alone. An illegal answer is still worse than any legal move, but the gap is now half the range of move quality. Compared with `grpo_v2`, only the reward differs.
 - **Also reported:** the KL divergence during training, and the share of pawn moves, captures, and checks among each model's legal answers.
 - **Results:** the KL penalty helped. `grpo_v2` solves 4.9%, significantly more than `grpo_v1`'s 3.3% (21 vs. 5, p = 0.0025), and its share of pawn moves among legal answers fell from 41% to 25% (captures 9%, checks 10%; `sft_v1`: 2% pawn moves, 25% captures, 18% checks). It is still significantly below `sft_v1` (25 vs. 54, p = 0.0015). The reward change in `grpo_v3` made no significant difference compared with `grpo_v2` (4.2%; 4 vs. 11, p = 0.12; pawn moves 30%).
-- **What the training logs show:** the average reward rose in every run (`grpo_v2`: −0.14 → 0.30), while puzzle accuracy fell. The KL divergence from SFT kept growing throughout training (0 → 0.29 for `grpo_v2`, 0 → 0.32 for `grpo_v3`): β = 0.04 slowed the drift away from SFT but did not stop it. Notebook 14 tests larger values.
+- **What the training logs show:** the average reward rose in every run (`grpo_v2`: −0.14 → 0.30), while puzzle accuracy fell. The KL divergence from SFT kept rising throughout training, more slowly and with larger swings towards the end: for `grpo_v2` it averaged 0.01 over the first 100 of 500 steps and 0.30 over the last 100 (`grpo_v3`: 0.01 and 0.36). β = 0.04 slowed the drift away from SFT but did not stop it. Notebook 14 tests larger values.
+![Puzzle accuracy, legal-move rate and ACPL of sft_v1 and the three RL models](../results/figures/grpo_v3/puzzle_metrics.png)
+
+*`results/figures/grpo_v3/puzzle_metrics.png`.* All three RL models give more legal answers than `sft_v1` (about 80% vs. 72%) but solve fewer puzzles and have a higher ACPL. Among them, `grpo_v2` (KL penalty) is the best (4.9%).
+
+![Share of pawn moves, captures and checks among legal answers](../results/figures/grpo_v2/move_kinds.png)
+
+*`results/figures/grpo_v2/move_kinds.png`.* What kind of moves each model plays, among its legal test answers. `sft_v1` rarely plays pawn moves (2%) and often captures (25%) or gives check (18%), as puzzles require. `grpo_v1` shifted to pawn moves (41%). The KL penalty reduced this shift (`grpo_v2`: 25%) but did not remove it, and captures and checks stayed far below `sft_v1`'s.
+
+![KL divergence of grpo_v2 from the SFT model during training](../results/figures/grpo_v2/kl.png)
+
+*`results/figures/grpo_v2/kl.png`.* How far `grpo_v2` moves from the SFT model during training (0 = identical to SFT). It rises through the whole run, faster after about step 150 and with larger swings after step 300, so β = 0.04 did not hold the model near SFT.
+
 - **Figures and tables** (`results/figures/grpo_v2/` and `grpo_v3/`, the same comparison in both): `reward.png`, `kl.png`, `move_kinds` (table and figure), `puzzle_results`, `paired_comparison`, `puzzle_metrics.png`, `accuracy_by_band.png`, `answer_outcomes.png`.
 
 ### Why post-training has not beaten SFT so far
