@@ -62,3 +62,29 @@ def test_build_pairs():
     assert dataset[0]["chosen"] == [{"role": "assistant", "content": "h5f7"}]
     assert dataset[0]["rejected"][0]["content"] != "h5f7"
     assert SCHOLARS_MATE in dataset[0]["prompt"][0]["content"]
+
+
+def test_mistake_pairs_keep_illegal_and_losing_answers_only():
+    from chesslm.preferences import build_mistake_pairs
+
+    positions = pd.DataFrame([{"fen": SCHOLARS_MATE, "history_uci": "", "history_san": ""}] * 4)
+    replies = iter(["Nf6", "h5f7", "h5h3", "no idea"])  # illegal, best, loses the mate, unparseable
+    reply_fn = lambda rows: [next(replies) for _ in rows]
+    dpo_cfg = {"rejected_min_cp_loss": 200, "target_pairs": 10, "stockfish_workers": 2}
+    pairs, answered = build_mistake_pairs(positions, reply_fn, PROMPT, dpo_cfg, STOCKFISH, batch_positions=2)
+    assert answered == 4
+    assert list(pairs.rejected_kind) == ["illegal", "blunder", "unparseable"]
+    assert [p[0]["content"] for p in pairs.rejected] == ["Nf6", "h5h3", "no idea"]  # illegal answers kept as written
+    assert all(c[0]["content"] == "h5f7" for c in pairs.chosen)
+    assert len(to_dpo_dataset(pairs)) == 3
+
+
+def test_mistake_pairs_stop_at_the_target():
+    from chesslm.preferences import build_mistake_pairs
+
+    positions = pd.DataFrame([{"fen": SCHOLARS_MATE, "history_uci": "", "history_san": ""}] * 6)
+    calls = []
+    reply_fn = lambda rows: calls.append(len(rows)) or ["Nf6"] * len(rows)
+    dpo_cfg = {"rejected_min_cp_loss": 200, "target_pairs": 3, "stockfish_workers": 1}
+    pairs, answered = build_mistake_pairs(positions, reply_fn, PROMPT, dpo_cfg, STOCKFISH, batch_positions=2)
+    assert len(pairs) == 3 and answered == 4 and calls == [2, 2]  # the third batch is never answered

@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Colors follow the thing shown, in a fixed order: first run blue, second orange, third green, fourth yellow.
-COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
+# Figures with more than four runs (the final comparison) continue with purple, teal, red, grey.
+COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#8a5cc7", "#1f9fb4", "#c8423b", "#7a7872"]
 SURFACE, TEXT, MUTED, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e6e5e0"
 BANDS = ["<1200", "1200-1800", "1800-2400", "2400+"]
 
@@ -19,6 +20,15 @@ def _style(ax, ylabel):
     ax.tick_params(colors=MUTED)
 
 
+def _finish(fig, path, title):
+    """Add an optional title above the whole figure, then save it. Titles help readers who see a figure on its own."""
+    if title:
+        fig.suptitle(title, color=TEXT, fontsize=11)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    return fig
+
+
 def _label_bars(ax, bars, fmt):
     for bar in bars:
         height = bar.get_height()
@@ -26,7 +36,7 @@ def _label_bars(ax, bars, fmt):
                     ha="center", va="bottom", fontsize=8, color=TEXT, xytext=(0, 2), textcoords="offset points")
 
 
-def histogram(values, xlabel, path, edges=None):
+def histogram(values, xlabel, path, edges=None, title=None):
     """Distribution of one quantity (e.g. ratings). Optional dashed lines mark boundaries such as rating bands."""
     fig, ax = plt.subplots(figsize=(7, 3), facecolor=SURFACE)
     ax.hist(values, bins=40, color=COLORS[0], edgecolor=SURFACE, linewidth=1)
@@ -34,12 +44,10 @@ def histogram(values, xlabel, path, edges=None):
         ax.axvline(edge, color=MUTED, linewidth=1, linestyle="--")
     ax.set_xlabel(xlabel, color=MUTED)
     _style(ax, "count")
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
 
 
-def compare_metrics(summary, runs, path):
+def compare_metrics(summary, runs, path, title=None):
     """Three panels (accuracy, legal-move rate, ACPL), one bar per run. Each panel has its own axis."""
     panels = [("puzzle_accuracy", "puzzle accuracy (%)", 100, "{:.1f}"),
               ("legal_rate", "legal-move rate (%)", 100, "{:.1f}"),
@@ -51,12 +59,12 @@ def compare_metrics(summary, runs, path):
         _label_bars(ax, bars, fmt)
         _style(ax, label)
         ax.set_ylim(bottom=0)  # bars always start at zero
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+        if max(map(len, runs)) > 8:  # long run names (e.g. sft_stockfish) would overlap
+            ax.tick_params(axis="x", labelrotation=30)
+    return _finish(fig, path, title)
 
 
-def accuracy_by_band(summary, runs, path):
+def accuracy_by_band(summary, runs, path, title=None):
     """Puzzle accuracy per rating band, one bar per run in each band."""
     fig, ax = plt.subplots(figsize=(7, 3.2), facecolor=SURFACE)
     width = 0.8 / len(runs)
@@ -71,12 +79,10 @@ def accuracy_by_band(summary, runs, path):
     ax.legend(frameon=False)
     _style(ax, "puzzle accuracy (%)")
     ax.set_ylim(bottom=0)
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
 
 
-def outcome_breakdown(summary, runs, path):
+def outcome_breakdown(summary, runs, path, title=None):
     """For each run, the share of answers that were legal, illegal, or unparseable (stacked to 100%)."""
     outcomes = [("legal_rate", "legal"), ("illegal_rate", "illegal"), ("unparseable_rate", "unparseable")]
     fig, ax = plt.subplots(figsize=(7, 2.4), facecolor=SURFACE)
@@ -94,12 +100,10 @@ def outcome_breakdown(summary, runs, path):
     _style(ax, "")
     ax.grid(axis="x", color=GRID, linewidth=0.8)
     ax.grid(axis="y", visible=False)
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
 
 
-def loss_curve(log, path):
+def loss_curve(log, path, title=None):
     """Training and validation loss over training steps."""
     fig, ax = plt.subplots(figsize=(7, 3.2), facecolor=SURFACE)
     train = log.dropna(subset=["loss"])
@@ -110,21 +114,17 @@ def loss_curve(log, path):
     ax.set_xlabel("training step", color=MUTED)
     ax.legend(frameon=False)
     _style(ax, "loss")
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
 
 
-def reward_curve(log, path):
+def reward_curve(log, path, title=None):
     """Average reward of the sampled answers over RL training steps (one series, so no legend)."""
     fig, ax = plt.subplots(figsize=(7, 3.2), facecolor=SURFACE)
     rows = log.dropna(subset=["reward"])
     ax.plot(rows.step, rows.reward, color=COLORS[0], linewidth=2)
     ax.set_xlabel("training step", color=MUTED)
     _style(ax, "average reward of sampled answers")
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
 
 
 # ---------------------------------------------------------------- interpreting results (notebook 07)
@@ -133,7 +133,7 @@ def reward_curve(log, path):
 BLUES = ["#d3e3f7", "#8fb7ea", "#4a8bdc", "#1d5aa8"]
 
 
-def accuracy_with_intervals(table, chance, path):
+def accuracy_with_intervals(table, chance, path, title=None):
     """Puzzle accuracy per run with its 95% interval, and a dashed line at the random-move accuracy."""
     fig, ax = plt.subplots(figsize=(7, 3.2), facecolor=SURFACE)
     runs = list(table.index)
@@ -148,12 +148,10 @@ def accuracy_with_intervals(table, chance, path):
     ax.legend(frameon=False, loc="upper left")
     _style(ax, "puzzle accuracy (%)")
     ax.set_ylim(bottom=0)
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
 
 
-def accuracy_decomposition(table, chance, path):
+def accuracy_decomposition(table, chance, path, title=None):
     """Accuracy = (share of legal answers) x (accuracy when the answer is legal), one panel for each factor."""
     fig, axes = plt.subplots(1, 2, figsize=(10, 3.2), facecolor=SURFACE)
     runs = list(table.index)
@@ -166,12 +164,10 @@ def accuracy_decomposition(table, chance, path):
     axes[1].axhline(chance * 100, color=MUTED, linewidth=1.2, linestyle="--",
                     label=f"random legal move ({chance:.1%})")
     axes[1].legend(frameon=False, loc="upper left")
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
 
 
-def stacked_shares(shares, colors, xlabel, path):
+def stacked_shares(shares, colors, xlabel, path, title=None):
     """One horizontal bar per row of `shares` (a table of percentages summing to 100), split by column."""
     fig, ax = plt.subplots(figsize=(8, 0.6 * len(shares) + 1.2), facecolor=SURFACE)
     rows = list(shares.index)[::-1]  # first row on top
@@ -191,12 +187,10 @@ def stacked_shares(shares, colors, xlabel, path):
     _style(ax, "")
     ax.grid(axis="x", color=GRID, linewidth=0.8)
     ax.grid(axis="y", visible=False)
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
 
 
-def token_probability_curve(log, path):
+def token_probability_curve(log, path, title=None):
     """SFT loss turned into a probability: exp(-loss) is the average (geometric mean) probability per answer token."""
     fig, ax = plt.subplots(figsize=(7, 3.2), facecolor=SURFACE)
     train = log.dropna(subset=["loss"])
@@ -208,12 +202,10 @@ def token_probability_curve(log, path):
     ax.legend(frameon=False)
     _style(ax, "probability per answer token (%)")
     ax.set_ylim(0, 100)
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
 
 
-def dpo_diagnostics(log, beta, path):
+def dpo_diagnostics(log, beta, path, title=None, rejected_label="rejected (loses 200+ cp)"):
     """Left: how often the model prefers the chosen move (50% = no preference).
     Right: the probability of the chosen and rejected answers, relative to the SFT model (log scale)."""
     fig, axes = plt.subplots(1, 2, figsize=(10, 3.4), facecolor=SURFACE)
@@ -232,7 +224,7 @@ def dpo_diagnostics(log, beta, path):
 
     ax = axes[1]
     for column, label, color in [("rewards/chosen", "chosen (Stockfish's best)", COLORS[2]),
-                                 ("rewards/rejected", "rejected (loses 200+ cp)", COLORS[3])]:
+                                 ("rewards/rejected", rejected_label, COLORS[3])]:
         ax.plot(train.step, np.exp(train[column] / beta), color=color, linewidth=2, label=label)
     ax.axhline(1, color=MUTED, linewidth=1.2, linestyle="--")
     ax.set_yscale("log")
@@ -240,6 +232,36 @@ def dpo_diagnostics(log, beta, path):
     ax.set_xlabel("training step", color=MUTED)
     ax.legend(frameon=False, loc="lower left")
     _style(ax, "probability vs. the SFT model (×)")
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    return fig
+    return _finish(fig, path, title)
+
+
+# ---------------------------------------------------------------- experiments from notebook 08 on
+
+def metric_panels(table, panels, path, title=None):
+    """One panel per metric, one bar per run (the rows of `table`). panels = [(column, axis label, number format)]."""
+    runs = list(table.index)
+    fig, axes = plt.subplots(1, len(panels), figsize=(3.4 * len(panels), 3.4), facecolor=SURFACE, squeeze=False)
+    for ax, (column, label, fmt) in zip(axes[0], panels):
+        bars = ax.bar(runs, table[column], color=COLORS[: len(runs)], edgecolor=SURFACE, linewidth=2)
+        _label_bars(ax, bars, fmt)
+        _style(ax, label)
+        ax.set_ylim(bottom=0)
+        ax.tick_params(axis="x", labelrotation=30)
+    return _finish(fig, path, title)
+
+
+def game_results(table, path, title=None):
+    """Wins, draws and losses for each model (rows of `table`, with columns wins/draws/losses), stacked to 100%."""
+    shares = table[["wins", "draws", "losses"]].div(table[["wins", "draws", "losses"]].sum(axis=1), axis=0) * 100
+    shares.columns = ["win", "draw", "loss"]
+    return stacked_shares(shares, [COLORS[2], "#c9c7c1", COLORS[6]], "share of games (%)", path, title=title)
+
+
+def training_curve(log, column, ylabel, path, title=None):
+    """Any one quantity logged during training (e.g. "kl") over training steps."""
+    fig, ax = plt.subplots(figsize=(7, 3.2), facecolor=SURFACE)
+    rows = log.dropna(subset=[column])
+    ax.plot(rows.step, rows[column], color=COLORS[0], linewidth=2)
+    ax.set_xlabel("training step", color=MUTED)
+    _style(ax, ylabel)
+    return _finish(fig, path, title)

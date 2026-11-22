@@ -35,6 +35,9 @@ def train(train_ds, val_ds, dpo_cfg, model_cfg, lora_cfg, start_adapter, output_
         args=DPOConfig(
             output_dir=str(output_dir),
             beta=t["beta"],
+            # Older configs (dpo_v1) have no loss_type: they used the standard DPO loss alone.
+            loss_type=t.get("loss_type", ["sigmoid"]),
+            loss_weights=t.get("loss_weights"),
             num_train_epochs=t["epochs"],
             learning_rate=t["learning_rate"],
             lr_scheduler_type=t["lr_scheduler"],

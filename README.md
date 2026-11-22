@@ -37,7 +37,7 @@ This project studies how post-training methods improve a small language model's 
 - Finish the report: progress, contributions, results (Hannah)
 - Agree on the updated timeline (everyone)
 
-**By the first draft of the paper (Nov 24):** refine DPO and RL on their own, train SFT on Stockfish's best moves, decide which remaining evaluations from our proposal to include, then combine methods (e.g. SFT → DPO → RL). See the [next steps](docs/project_notes.md#5-limitations-and-next-steps).
+**After the progress report (notebooks 08–11, ready to run on Databricks):** SFT on Stockfish's moves (08), DPO on the SFT model's own mistakes (09), RL with a KL penalty and a new reward (10), and every model on held-out game positions and in full games (11). Their design is in [section 8 of the project notes](docs/project_notes.md#8-after-the-progress-report-follow-up-experiments). Run them in order 08 → 09 → 10 → 11; combinations of methods (12) come after the first draft (Nov 24).
 
 ## Contributions up to Progress Report
 
@@ -84,7 +84,8 @@ The course gave us Databricks credits for an NVIDIA A10G (24 GB). The notebooks 
 1. **Once:** Adrian's copy of the repo in Databricks is shared with the team, and the uploaded data and models live there, so open it from your workspace and use it. If you need your own copy, open [this link to create the Git folder](https://dbc-fd89e1b5-e4fc.cloud.databricks.com/browse/folders/home?addGit=&o=7474659242886734&gitUrl=https%3A%2F%2Fgithub.com%2Fadrianapsay%2Fchess-post-training&gitProvider=gitHub). Either way, link GitHub under **Settings → Linked accounts** so you can push.
 2. **Once, in a new copy only:** git does not track data or models, so upload these into the same folders inside the Git folder: `data/processed/` (`train.parquet`, `val.parquet`, `dpo_pairs.jsonl`, about 30 MB) and `checkpoints/sft_v1/` (from the team drive).
 3. **Each run:** click **Pull**, open the notebook, choose **Serverless GPU → Small (1xA10)**, and click **Run all**. For long training runs, run the notebook as a job instead (**New → Job**, type **Notebook**, compute **Serverless GPU**), so the browser tab can close.
-4. **After each run:** choose **Terminate** in the compute menu so the GPU stops billing, then commit and push the `results/` files from the Git folder. **Leave notebooks unticked:** the workspace cannot save notebook outputs to git, so committing a notebook from Databricks would erase its outputs on GitHub. Notebook changes are made and pushed from a laptop.
+   - Notebooks 08–10 need only `data/processed/` and `checkpoints/sft_v1/`. Notebook 11 also evaluates the first DPO and RL models, so it needs `checkpoints/dpo_v1/` and `checkpoints/grpo_v1/` (from the team drive); it skips any model whose folder is missing.
+4. **After each run:** choose **Terminate** in the compute menu so the GPU stops billing, then commit and push the `results/` files from the Git folder. **Leave notebooks unticked:** the workspace cannot save notebook outputs to git, so committing a notebook from Databricks would erase its outputs on GitHub. Notebook changes are made and pushed from a laptop. To keep a notebook's figures on GitHub too, use **File → Export → IPython Notebook** after the run, replace the notebook on a laptop with the exported file, and commit it there.
 
 Use only the Small size; Medium and Large cost far more. Our spending is on the course's usage dashboard (the link is in the Databricks student guide; our group ID came by email). Training records the GPU name with its GPU-hours, so compare A10G and laptop runs by tokens seen rather than hours.
 
@@ -102,6 +103,12 @@ Open each notebook in VS Code, choose the `.venv` kernel, and click **Run All**.
 | `05_dpo_first_run` | Trains the SFT model further with DPO, and grades it. |
 | `06_grpo_first_run` | Trains the SFT model further with RL (GRPO), grades it, and makes the four-model comparison table and figures. |
 | `07_understanding_results` | Explains why the models score as they do, from the saved results (no GPU needed). |
+| `08_sft_stockfish_moves` | Trains SFT on Stockfish's best moves instead of the players' moves (`sft_stockfish`), and grades it. |
+| `09_dpo_mistake_pairs` | Collects the SFT model's own mistakes as DPO pairs, then trains and grades `dpo_v2` (DPO) and `dpo_v3` (DPO + SFT loss). |
+| `10_grpo_kl_reward` | Trains and grades `grpo_v2` (KL penalty) and `grpo_v3` (KL penalty + new reward). |
+| `11_game_positions_and_games` | Grades every model on 1,000 held-out game positions and plays 50 games against a random mover and against Stockfish. |
+
+Notebooks 08–11 have a `QUICK_CHECK` setting. Run once with `QUICK_CHECK = True` (a few minutes, tiny sizes, nothing saved to `results/`), then with `False` for the real run. Each saves its figures and tables in its own folder, `results/figures/<run name>/`. The earlier notebooks (00–07) and their results stay as they are.
 
 Keep the laptop plugged in and stop it from sleeping while notebooks run.
 

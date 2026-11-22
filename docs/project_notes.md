@@ -2,7 +2,7 @@
 
 What we are doing and what the results show, readable without the code. Exact settings are in `configs/`, details are in each notebook, and setup instructions are in the [README](../README.md).
 
-As of Nov 5, all four models (base, SFT, DPO, and RL) are trained and graded.
+As of Nov 5, all four models (base, SFT, DPO, and RL) are trained and graded. After the progress report we set up five new training runs and two new evaluations (notebooks 08–11); their design is in [section 8](#8-after-the-progress-report-follow-up-experiments), and their results will be added when they finish.
 
 1. [The project](#1-the-project)
 2. [How the methods work](#2-how-the-methods-work)
@@ -11,6 +11,7 @@ As of Nov 5, all four models (base, SFT, DPO, and RL) are trained and graded.
 5. [Limitations and next steps](#5-limitations-and-next-steps)
 6. [Key facts for the report](#6-key-facts-for-the-report)
 7. [Glossary](#7-glossary)
+8. [After the progress report: follow-up experiments](#8-after-the-progress-report-follow-up-experiments)
 
 ---
 
@@ -251,3 +252,47 @@ Key facts for the Data and Methods sections. More detail is in the sections abov
 - **Statistically clear:** unlikely to be explained by chance (p < 0.05 in a paired comparison on the same puzzles).
 - **Ablation:** an experiment that changes one factor and keeps everything else fixed.
 - **GPU-hour:** one hour of one GPU's time; our measure of compute.
+
+---
+
+## 8. After the progress report: follow-up experiments
+
+The first results raised three questions: would SFT learn more from Stockfish's moves than from human moves, why did DPO and RL make the SFT model worse, and do the models differ in ways puzzles cannot show? Each experiment below changes **one thing** compared with a model we already have, so a difference in results can be attributed to that change. The earlier models, results, and figures are left exactly as they were.
+
+All new models are graded with the same puzzles, prompt, greedy decoding, and grader as before. Each experiment saves its tables and figures in its own folder, `results/figures/<model>/`. Results will be added here when the runs finish.
+
+### 08 · SFT on Stockfish's moves (`sft_stockfish`)
+
+- **What changes:** the answer the model learns. `sft_v1` learned the move the 2000+ player made; `sft_stockfish` learns Stockfish's best move (search depth 10) in exactly the same 20,000 positions, in the same order, with the same settings.
+- **Why:** a puzzle accepts only the best move, and strong players often choose a different, reasonable move. Training on the engine's choice targets puzzle-solving directly. It also means all three methods learn from the same source, since DPO's preferred moves and RL's reward already come from Stockfish. Our TA suggested this ablation.
+- **Compared with:** `sft_v1` (the effect of the answer source) and the base model.
+- **Also reported:** how often the human move and Stockfish's move agree in the training positions, which shows how much the training data actually changes.
+
+### 09 · DPO on the SFT model's own mistakes (`dpo_v2`, `dpo_v3`)
+
+- **What changes in the data:** the *rejected* answer of each pair. In `dpo_v1` it was a random legal move losing at least 200 centipawns: mostly severe blunders the model would rarely play, so avoiding them taught little. Now we run `sft_v1` on training positions it was not trained on and keep its own mistakes: answers that are illegal, unparseable, or legal but losing at least 200 centipawns. Each mistake is paired with Stockfish's best move as the *chosen* answer. Building pairs from the model's own outputs is sometimes called *on-policy* preference data. Our TA suggested changing how pairs are built.
+- **Two runs, both starting from `sft_v1`, with the same 4,788 pairs (the same number as `dpo_v1`):**
+  - `dpo_v2`: the standard DPO loss. Compared with `dpo_v1`, only the rejected answers differ.
+  - `dpo_v3`: the DPO loss plus the SFT loss on the chosen answer. In `dpo_v1`, DPO lowered the probability of both the chosen and the rejected move, and the freed probability partly went to illegal moves. The added SFT term rewards the chosen move directly, so its probability should not fall. Compared with `dpo_v2`, only the loss differs.
+- **Also reported:** how often `sft_v1` makes a mistake on new game positions, and what share of the mistakes are illegal moves vs. blunders.
+
+### 10 · RL with a KL penalty and an adjusted reward (`grpo_v2`, `grpo_v3`)
+
+- **Background:** `grpo_v1` raised the legal-answer rate to 82% but fell to 3.3% puzzle accuracy by switching to quiet pawn moves. Two features of its setup favor this: nothing held it close to the SFT model, and the reward valued legality (−1 for illegal, at least +0.1 for any legal move) as much as the whole range of move quality (best vs. worst legal move: a difference of 1).
+- **The KL penalty:** the *KL divergence* measures how far the model's probabilities over answers have moved from those of the SFT model. GRPO subtracts β × KL from what it maximizes, so drifting away from SFT has a cost that β controls. The model can still change where the reward gain outweighs that cost.
+- **Two runs, both starting from `sft_v1`, on the same 2,000 positions as `grpo_v1`:**
+  - `grpo_v2`: adds the KL penalty (β = 0.04), with the original reward. Compared with `grpo_v1`, only β differs.
+  - `grpo_v3`: the KL penalty and a new reward: −0.5 for an illegal or unparseable answer, and 1 − (centipawn loss / 1000) for a legal move, with no bonus for legality alone. An illegal answer is still worse than any legal move, but the gap is now half the range of move quality. Compared with `grpo_v2`, only the reward differs.
+- **Also reported:** the KL divergence during training, and the share of pawn moves, captures, and checks among each model's legal answers.
+
+### 11 · Held-out game positions and full games (every model)
+
+These are the two evaluations our progress report committed to. They run on every model, old and new, and add new result files without changing earlier ones.
+
+- **Held-out game positions:** 1,000 ordinary positions from validation games (games no model trained on), frozen in `data/eval/game_positions.csv`. There is no single right answer in most of them, so we measure the legal-move rate, ACPL, the **blunder rate** (answers losing 200+ centipawns), and how often the answer equals Stockfish's move and the player's move. A random legal move is included as a reference. This separates "makes fewer blunders in ordinary positions" from "finds tactics in puzzles", which puzzles alone cannot.
+- **Full games:** 50 games per model against each of two opponents: a player that moves at random (the weakest possible opponent) and Stockfish searching to depth 1 (shallow, but far stronger than our models). Games start after the first three moves of 25 different held-out games, and each opening is played once with each color. An illegal or unparseable answer is replaced by a random legal move and counted, so every game finishes. A game still going after 100 moves counts as a draw. We report wins, draws, losses, the score ((wins + ½ draws) / games), and the share of invalid moves over whole games.
+
+### 12–13 · Combinations and the final comparison (after the first draft)
+
+Once the results above are in, we combine the best SFT model with the best DPO and RL settings: SFT → DPO, SFT → RL, and SFT → DPO → RL. These combinations, and one final table of every model on every evaluation, are planned for the revised paper.
+

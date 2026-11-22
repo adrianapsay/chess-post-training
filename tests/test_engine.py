@@ -33,3 +33,23 @@ def test_results_are_cached():
         move = chess.Move.from_uci("h5h3")
         scorer.centipawn_loss(SCHOLARS_MATE, move)
         assert (SCHOLARS_MATE, "h5h3") in scorer.loss_cache
+
+
+def test_map_with_engines_keeps_order():
+    from chesslm.engine import map_with_engines
+
+    fens = [SCHOLARS_MATE, chess.STARTING_FEN, SCHOLARS_MATE]
+    best = map_with_engines(lambda fen, scorer: scorer.best_move(fen)[0].uci(), fens, CFG, workers=2)
+    assert best[0] == best[2] == "h5f7"
+    assert chess.Move.from_uci(best[1]) in chess.Board().legal_moves
+
+
+def test_stockfish_labels_are_legal_moves():
+    import pandas as pd
+
+    from chesslm.data import add_stockfish_moves
+
+    positions = pd.DataFrame({"fen": [SCHOLARS_MATE, chess.STARTING_FEN]})
+    labelled = add_stockfish_moves(positions, CFG, workers=2)
+    assert list(labelled.best_uci)[0] == "h5f7" and list(labelled.best_san)[0] == "Qxf7#"
+    assert chess.Board().parse_san(labelled.best_san[1]).uci() == labelled.best_uci[1]

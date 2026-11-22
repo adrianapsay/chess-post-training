@@ -6,12 +6,22 @@ rejected_min_cp_loss: 200    # a rejected move must lose at least this many cent
 stockfish_depth: 10          # slightly shallower than evaluation (12), so pairs build faster
 seed: 42
 
+# Where the rejected move comes from:
+#   random       = a random legal move losing rejected_min_cp_loss or more (dpo_v1)
+#   sft_mistakes = the SFT model's own answer, when it is illegal or loses that much (dpo_v2, dpo_v3; notebook 09)
+rejected_source: random
+target_pairs: 4788           # sft_mistakes: stop once this many pairs are found (the same number as dpo_v1)
+stockfish_workers: 4         # Stockfish processes running at once when building sft_mistakes pairs
+
 # DPO training, starting from the SFT adapter (which is also the frozen reference model).
 # The model, LoRA, and 4-bit settings are the same as in configs/sft.yaml.
 training:
   start_adapter: checkpoints/sft_v1
   val_fraction: 0.05           # pairs held out to watch the preference accuracy during training
   beta: 0.1                    # how far the model may move from the SFT model (higher = less)
+  loss_type: [sigmoid]         # sigmoid = the standard DPO loss (dpo_v1, dpo_v2). [sigmoid, sft] also adds
+                               # the SFT loss on the chosen move, so its probability cannot fall (dpo_v3)
+  loss_weights: null           # weights for each loss in loss_type; null = 1 each
   learning_rate: 2.0e-5
   lr_scheduler: cosine
   warmup_steps: 0.1            # below 1 = a fraction of all steps

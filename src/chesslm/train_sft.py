@@ -16,19 +16,34 @@ from chesslm.model import load_model, load_tokenizer, pick_device
 from chesslm.prompts import build_messages
 
 
-def to_sft_example(row, prompt_cfg):
-    """One training example: the question as the prompt, the move played as the completion."""
-    answer = row[f"move_{prompt_cfg['notation']}"]
+# Which column holds the answer the model learns (configs/sft.yaml, data.answer):
+# "played" = the move the player made (sft_v1); "stockfish" = Stockfish's best move,
+# added by data.add_stockfish_moves (sft_stockfish).
+ANSWER_COLUMNS = {"played": "move", "stockfish": "best"}
+
+
+def to_sft_example(row, prompt_cfg, answer="played"):
+    """One training example: the question as the prompt, the answer move as the completion."""
+    move = row[f"{ANSWER_COLUMNS[answer]}_{prompt_cfg['notation']}"]
     return {
         "prompt": build_messages(row, prompt_cfg),
-        "completion": [{"role": "assistant", "content": answer}],
+        "completion": [{"role": "assistant", "content": move}],
     }
 
 
-def make_dataset(positions, n, prompt_cfg, seed):
+def sample_examples(positions, n, seed):
+    """A seeded random sample of n positions. The same seed always gives the same positions, in the same order."""
+    return positions.sample(n=min(n, len(positions)), random_state=seed)
+
+
+def to_dataset(sample, prompt_cfg, answer="played"):
+    """Turn already-sampled positions into SFT examples, keeping their order."""
+    return Dataset.from_list([to_sft_example(row, prompt_cfg, answer) for row in sample.to_dict("records")])
+
+
+def make_dataset(positions, n, prompt_cfg, seed, answer="played"):
     """A seeded random sample of n positions, as SFT examples."""
-    sample = positions.sample(n=min(n, len(positions)), random_state=seed)
-    return Dataset.from_list([to_sft_example(row, prompt_cfg) for row in sample.to_dict("records")])
+    return to_dataset(sample_examples(positions, n, seed), prompt_cfg, answer)
 
 
 def train(train_ds, val_ds, sft_cfg, output_dir):

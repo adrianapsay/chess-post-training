@@ -120,6 +120,58 @@ def evaluate(model, tokenizer, puzzles, prompt_cfg, gen_cfg, scorer):
     return graded
 
 
+# ---------------------------------------------------------------- held-out game positions
+
+def grade_position(position, reply, scorer, blunder_cp):
+    """Grade one reply to an ordinary game position (not a puzzle): legality and move quality.
+
+    There is no single right answer here, so we record how much the move loses against
+    Stockfish's best move, whether that loss counts as a blunder, and whether the move matches
+    Stockfish's choice or the move the player actually made.
+    """
+    board = chess.Board(position["fen"])
+    move, outcome = parse_move(reply, board)
+    best, _ = scorer.best_move(position["fen"])
+    loss = scorer.centipawn_loss(position["fen"], move) if move else None
+    return {
+        "game_id": position["game_id"],
+        "ply": position["ply"],
+        "reply": reply,
+        "move": move.uci() if move else None,
+        "outcome": outcome,  # legal / illegal / unparseable
+        "cp_loss": loss,
+        "blunder": loss is not None and loss >= blunder_cp,
+        "matches_stockfish": move == best,
+        "matches_player": move is not None and move.uci() == position["move_uci"],
+    }
+
+
+def evaluate_positions(model, tokenizer, positions, prompt_cfg, gen_cfg, scorer, blunder_cp):
+    """Ask the model every held-out game position and grade the replies. Returns one row per position."""
+    rows = positions.to_dict("records")
+    prompts = [build_prompt(tokenizer, row, prompt_cfg) for row in rows]
+    replies, n_tokens = generate_replies(model, tokenizer, prompts, gen_cfg)
+    graded = pd.DataFrame([grade_position(row, reply, scorer, blunder_cp) for row, reply in zip(rows, replies)])
+    graded["n_tokens"] = n_tokens
+    return graded
+
+
+def summarize_positions(graded):
+    """Summary metrics for graded game positions. Rates are shares of all answers unless noted."""
+    legal = graded[graded.outcome == "legal"]
+    return {
+        "n_positions": len(graded),
+        "legal_rate": (graded.outcome == "legal").mean(),
+        "illegal_rate": (graded.outcome == "illegal").mean(),
+        "unparseable_rate": (graded.outcome == "unparseable").mean(),
+        "acpl": legal.cp_loss.mean() if len(legal) else None,          # legal answers only
+        "blunder_rate_of_legal": legal.blunder.mean() if len(legal) else None,
+        "blunder_rate": graded.blunder.mean(),                          # blunders among all answers
+        "stockfish_match_rate": graded.matches_stockfish.mean(),
+        "player_match_rate": graded.matches_player.mean(),
+    }
+
+
 # ---------------------------------------------------------------- saving
 
 def save_run(run_name, graded, summary, config):

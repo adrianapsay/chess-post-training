@@ -12,3 +12,20 @@ generation:
   # Decoding is always greedy (see evaluate.py), so every model is graded the same way.
   max_new_tokens: 32   # a move is a few tokens; this leaves room for a short sentence around it
   batch_size: 8        # positions answered at once; lower it if the GPU runs out of memory
+
+# Held-out game positions (notebook 11): ordinary positions from games no model trained on.
+game_positions:
+  file: data/eval/game_positions.csv   # built once from the validation games, then frozen
+  n_positions: 1000
+  blunder_cp: 200        # a legal move losing at least this much is a blunder (the DPO threshold)
+  seed: 42
+
+# Full games against an opponent (notebook 11). See src/chesslm/play.py for the rules.
+games:
+  openings_file: data/eval/game_openings.csv   # built once, then frozen
+  n_openings: 25         # each opening is played twice (model as White, then Black): 50 games per opponent
+  opening_plies: 6       # games start after the first 3 moves of a held-out game, so they differ
+  max_moves: 100         # a game still going after 100 moves counts as a draw
+  opponents: [random, stockfish]
+  stockfish_depth: 1     # very shallow, but still far stronger than our models; deterministic
+  seed: 42

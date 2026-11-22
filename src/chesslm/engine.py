@@ -86,3 +86,26 @@ class MoveScorer:
                 loss = best_score - self.score(board, mover)
             self.loss_cache[key] = min(max(loss, 0), self.cap)
         return self.loss_cache[key]
+
+
+def map_with_engines(func, items, stockfish_cfg, workers):
+    """Apply func(item, scorer) to every item, using `workers` Stockfish processes at once.
+
+    The items are split into `workers` consecutive chunks, and each chunk gets its own engine.
+    Results come back in the original order. Keep `workers` fixed (it is in the configs):
+    an engine's memory of earlier searches can change a later result slightly, so the same
+    split gives the same results on any machine.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    items = list(items)
+    size = -(-len(items) // workers) or 1  # ceiling division
+    chunks = [items[i : i + size] for i in range(0, len(items), size)]
+
+    def run_chunk(chunk):
+        with MoveScorer(stockfish_cfg) as scorer:
+            return [func(item, scorer) for item in chunk]
+
+    # Threads are enough: each one mostly waits for its own Stockfish process.
+    with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
+        return [result for chunk in pool.map(run_chunk, chunks) for result in chunk]

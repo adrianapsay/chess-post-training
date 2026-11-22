@@ -25,3 +25,10 @@ Contributions so far.
 - Fixed a crash in the move reader during RL, so an answer like `f7f7` (the same square twice) now counts as illegal, and added troubleshooting notes for a stalled model download and a Windows security block.
 - Analysed the RL results in notebook 07 and the project notes, finding that RL gains legal moves but loses accuracy by switching to safe pawn moves, and made the four-model comparison table and figures.
 - Added 4 unit tests, covering the CPU embedding table, DPO's validation split, and same-square moves.
+
+## Adrian (2026-11-22)
+
+- Built the follow-up experiments after the progress report as notebooks 08–11, ready to run on Databricks, each with a quick-check mode and its own folder of figures and tables. They cover SFT on Stockfish's best moves instead of the players' moves, DPO pairs built from the SFT model's own mistakes (with and without an added SFT loss), and RL with a KL penalty and a reward that no longer pays a bonus for legality alone.
+- Added two evaluations for every model. The first grades 1,000 held-out game positions on legality, centipawn loss, blunder rate, and agreement with Stockfish and with the player. The second plays full games against a random mover and against Stockfish. The positions and openings are frozen in `data/eval/`.
+- Added 11 unit tests and described the design of each new experiment in the project notes (section 8).
+

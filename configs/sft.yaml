@@ -17,6 +17,9 @@ data:
   trial_examples: 500          # a quick trial run first, to check that the loss goes down
   train_examples: 20000        # subsample of the 142,500 training positions
   val_examples: 1000
+  answer: played               # the move the model learns: played (the player's move, sft_v1) or
+                               # stockfish (Stockfish's best move, sft_stockfish; see notebook 08)
+  stockfish_depth: 10          # search depth for the stockfish answers (the same as the DPO chosen moves)
 
 training:
   learning_rate: 2.0e-4

@@ -201,6 +201,24 @@ def remove_overlap(positions, eval_fens):
     return positions[~overlap].reset_index(drop=True), int(overlap.sum())
 
 
+def add_stockfish_moves(positions, stockfish_cfg, workers):
+    """Add Stockfish's best move in each position, as columns best_uci and best_san.
+
+    Used to train SFT on Stockfish's moves instead of the moves the players made (notebook 08).
+    """
+    from chesslm.engine import map_with_engines
+
+    def best(fen, scorer):
+        move, _ = scorer.best_move(fen)
+        return move.uci(), chess.Board(fen).san(move)
+
+    moves = map_with_engines(best, positions.fen, stockfish_cfg, workers)
+    labelled = positions.copy()
+    labelled["best_uci"] = [uci for uci, _ in moves]
+    labelled["best_san"] = [san for _, san in moves]
+    return labelled
+
+
 def split_by_game(positions, val_fraction, seed):
     """Split into train/validation by game, so no game contributes to both."""
     game_ids = sorted(positions.game_id.unique())

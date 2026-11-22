@@ -48,3 +48,30 @@ def test_summarize():
     assert s["accuracy_by_band"] == {"2400+": 0.0, "<1200": 0.5}
     assert s["legal_rate"] == 0.5 and s["illegal_rate"] == 0.25 and s["unparseable_rate"] == 0.25
     assert s["acpl"] == 150  # legal moves only
+
+
+class FakePositionScorer:
+    """Stockfish stand-in for game positions: the best move is Ra8, and any other move loses 300."""
+
+    def best_move(self, fen):
+        return chess.Move.from_uci("a1a8"), 0
+
+    def centipawn_loss(self, fen, move):
+        return 0 if move.uci() == "a1a8" else 300
+
+
+def test_grade_and_summarize_game_positions():
+    from chesslm.evaluate import grade_position, summarize_positions
+
+    position = {"game_id": "g", "ply": 30, "fen": BACK_RANK, "move_uci": "b1b8"}
+    rows = [grade_position(position, reply, FakePositionScorer(), blunder_cp=200)
+            for reply in ["a1a8", "b1b8", "g1h1", "Qd8", "hmm"]]
+    graded = pd.DataFrame(rows)
+    assert list(graded.outcome) == ["legal", "legal", "legal", "illegal", "unparseable"]
+    assert list(graded.matches_stockfish) == [True, False, False, False, False]
+    assert list(graded.matches_player) == [False, True, False, False, False]
+    summary = summarize_positions(graded)
+    assert summary["legal_rate"] == 0.6
+    assert summary["acpl"] == 200  # (0 + 300 + 300) / 3
+    assert summary["blunder_rate_of_legal"] == 2 / 3
+    assert summary["blunder_rate"] == 0.4
