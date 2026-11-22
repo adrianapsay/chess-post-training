@@ -41,14 +41,18 @@ def on_databricks():
     return "DATABRICKS_RUNTIME_VERSION" in os.environ or Path("/Workspace").is_dir()
 
 
-def setup_databricks():
+def setup_databricks(require_gpu=False):
     """On Databricks, install the pinned packages and Stockfish for this session. Elsewhere, do nothing.
 
     If the install changed any package, Python restarts once so that no old version stays
     loaded in memory. Everything set up here survives the restart.
+    With require_gpu=True (the training notebooks), stop at once if no GPU is attached:
+    on plain "Serverless" compute, training would run on the CPU, very slowly.
     """
     if not on_databricks():
         return
+    if require_gpu:
+        check_gpu()
     add_src_to_path()
     install_stockfish()
     changed = install_packages()
@@ -58,6 +62,17 @@ def setup_databricks():
         print("Restarting Python so the new versions load. If the notebook stops here, click Run all again.")
         from databricks.sdk.runtime import dbutils
         dbutils.library.restartPython()
+
+
+def check_gpu():
+    """Raise a clear error if this session has no GPU."""
+    import torch  # Databricks' own PyTorch, which setup never replaces
+
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "No GPU found. This notebook needs a GPU: in the compute menu (top right), choose "
+            "Serverless GPU -> Small (1xA10) instead of Serverless, then click Run all again.")
+    print(f"GPU: {torch.cuda.get_device_name()}")
 
 
 def databricks_requirements():

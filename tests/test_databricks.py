@@ -29,3 +29,14 @@ def test_stockfish_found_where_the_databricks_setup_puts_it(tmp_path, monkeypatc
     monkeypatch.setattr(engine.shutil, "which", lambda name: None)
     monkeypatch.setattr(engine, "STOCKFISH_BINARY", binary)
     assert engine.find_stockfish() == str(binary)
+
+
+def test_gpu_check_explains_how_to_fix_missing_gpu(monkeypatch):
+    import pytest
+    import torch
+
+    from chesslm.databricks import check_gpu
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    with pytest.raises(RuntimeError, match="Serverless GPU"):
+        check_gpu()
