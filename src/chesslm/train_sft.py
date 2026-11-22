@@ -5,11 +5,13 @@ with the move that was played. The loss is computed on the answer only, not the 
 """
 
 import time
+from pathlib import Path
 
 import pandas as pd
 import torch
 from datasets import Dataset
 from peft import LoraConfig
+from transformers import TrainerCallback
 from trl import SFTConfig, SFTTrainer
 
 from chesslm.model import load_model, load_tokenizer, pick_device
@@ -46,11 +48,42 @@ def make_dataset(positions, n, prompt_cfg, seed, answer="played"):
     return to_dataset(sample_examples(positions, n, seed), prompt_cfg, answer)
 
 
-def train(train_ds, val_ds, sft_cfg, output_dir):
-    """Train a LoRA adapter, save it to output_dir, and return (loss log, compute used)."""
+def examples_label(examples):
+    """A short name for a number of training examples: 20000 -> "20k" (small numbers, as in a quick check, stay as they are)."""
+    return f"{examples // 1000}k" if examples >= 1000 else str(examples)
+
+
+def copy_dir(output_dir, examples):
+    """Where the copy saved after `examples` training examples goes: checkpoints/sft_100k -> checkpoints/sft_100k_at_20k."""
+    return output_dir.parent / f"{output_dir.name}_at_{examples_label(examples)}"
+
+
+class SaveCopies(TrainerCallback):
+    """Save a copy of the adapter after given numbers of training examples (for a data-scaling curve).
+
+    One training step uses effective_batch_size examples, so the copy for N examples is saved
+    after step N // effective_batch_size.
+    """
+
+    def __init__(self, output_dir, save_at, examples_per_step):
+        self.dirs = {n // examples_per_step: copy_dir(output_dir, n) for n in save_at}
+
+    def on_step_end(self, args, state, control, model=None, **kwargs):
+        if state.global_step in self.dirs:
+            model.save_pretrained(str(self.dirs[state.global_step]))
+
+
+def train(train_ds, val_ds, sft_cfg, output_dir, save_at=None):
+    """Train a LoRA adapter, save it to output_dir, and return (loss log, compute used).
+
+    save_at: optional numbers of training examples (e.g. [20000, 40000]) after which a copy of the
+    adapter is also saved, to copy_dir(output_dir, n). Used for the data-scaling run (notebook 12).
+    """
     t = sft_cfg["training"]
     device = pick_device()
     use_4bit = sft_cfg["lora"]["quantize_4bit"] and device == "cuda"
+    output_dir = Path(output_dir)
+    callbacks = [SaveCopies(output_dir, save_at, t["effective_batch_size"])] if save_at else None
 
     trainer = SFTTrainer(
         model=load_model(sft_cfg["model"], quantize_4bit=use_4bit),
@@ -83,6 +116,7 @@ def train(train_ds, val_ds, sft_cfg, output_dir):
             report_to="none",
             seed=t["seed"],
         ),
+        callbacks=callbacks,
     )
 
     start = time.time()

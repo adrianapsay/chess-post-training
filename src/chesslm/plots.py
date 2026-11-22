@@ -240,8 +240,14 @@ def dpo_diagnostics(log, beta, path, title=None, rejected_label="rejected (loses
 def metric_panels(table, panels, path, title=None):
     """One panel per metric, one bar per run (the rows of `table`). panels = [(column, axis label, number format)]."""
     runs = list(table.index)
-    fig, axes = plt.subplots(1, len(panels), figsize=(3.4 * len(panels), 3.4), facecolor=SURFACE, squeeze=False)
-    for ax, (column, label, fmt) in zip(axes[0], panels):
+    if len(runs) <= 8:  # one row of panels
+        nrows, ncols, width = 1, len(panels), 3.4
+    else:  # many models: two panels per row, each wide enough for its bars
+        nrows, ncols, width = -(-len(panels) // 2), min(2, len(panels)), 0.45 * len(runs)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(width * ncols, 3.4 * nrows), facecolor=SURFACE, squeeze=False)
+    for ax in axes.flat[len(panels):]:
+        ax.set_visible(False)
+    for ax, (column, label, fmt) in zip(axes.flat, panels):
         bars = ax.bar(runs, table[column], color=COLORS[: len(runs)], edgecolor=SURFACE, linewidth=2)
         _label_bars(ax, bars, fmt)
         _style(ax, label)
@@ -264,4 +270,36 @@ def training_curve(log, column, ylabel, path, title=None):
     ax.plot(rows.step, rows[column], color=COLORS[0], linewidth=2)
     ax.set_xlabel("training step", color=MUTED)
     _style(ax, ylabel)
+    return _finish(fig, path, title)
+
+
+def training_curves(logs, column, ylabel, path, title=None):
+    """One logged quantity (e.g. "kl") over training steps for several runs. logs = {run name: training log}."""
+    fig, ax = plt.subplots(figsize=(7, 3.2), facecolor=SURFACE)
+    for color, (name, log) in zip(COLORS, logs.items()):
+        rows = log.dropna(subset=[column])
+        ax.plot(rows.step, rows[column], color=color, linewidth=2, label=name)
+    ax.set_xlabel("training step", color=MUTED)
+    ax.legend(frameon=False)
+    _style(ax, ylabel)
+    return _finish(fig, path, title)
+
+
+def scaling_curve(table, panels, references, path, title=None):
+    """Metrics against the number of training examples, one panel per metric.
+
+    table: one row per model copy, indexed by training examples seen. panels = [(column, axis label)].
+    references = {label: {column: value}}, drawn as dashed horizontal lines (e.g. sft_v1, a random move).
+    """
+    fig, axes = plt.subplots(1, len(panels), figsize=(4.6 * len(panels), 3.4), facecolor=SURFACE, squeeze=False)
+    for ax, (column, label) in zip(axes[0], panels):
+        ax.plot(table.index / 1000, table[column], color=COLORS[0], linewidth=2, marker="o", markersize=7,
+                label="this run")
+        for value_color, (name, values) in zip(COLORS[1:], references.items()):
+            if column in values:
+                ax.axhline(values[column], color=value_color, linestyle="--", linewidth=1.5, label=name)
+        ax.set_xlabel("training examples seen (thousands)", color=MUTED)
+        ax.set_ylim(bottom=0)
+        ax.legend(frameon=False, fontsize=8)
+        _style(ax, label)
     return _finish(fig, path, title)

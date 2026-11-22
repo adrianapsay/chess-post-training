@@ -35,3 +35,17 @@ def test_same_seed_gives_same_positions_in_same_order():
     sample = sample_examples(positions, 10, seed=42)
     assert list(sample.ply) == list(positions.sample(n=10, random_state=42).ply)  # what sft_v1 used
     assert to_dataset(sample, prompt).to_list() == make_dataset(positions, 10, prompt, seed=42).to_list()
+
+
+def test_copies_are_saved_after_the_requested_numbers_of_examples(tmp_path):
+    from types import SimpleNamespace
+
+    from chesslm.train_sft import SaveCopies, copy_dir
+
+    saved = []
+    model = SimpleNamespace(save_pretrained=saved.append)
+    callback = SaveCopies(tmp_path / "sft_100k", save_at=[20000, 40000], examples_per_step=32)
+    for step in range(1, 1300):
+        callback.on_step_end(None, SimpleNamespace(global_step=step), None, model=model)
+    assert saved == [str(tmp_path / "sft_100k_at_20k"), str(tmp_path / "sft_100k_at_40k")]
+    assert copy_dir(tmp_path / "sft_100k", 20000) == tmp_path / "sft_100k_at_20k"

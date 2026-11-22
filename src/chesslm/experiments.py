@@ -119,6 +119,15 @@ def load_graded(run_name):
         return pd.DataFrame(json.load(f)["rows"])
 
 
+def load_training_log(run_name):
+    """The training log saved for a run (results/<run>_training.json), as a table."""
+    path = RESULTS / f"{run_name}_training.json"
+    if not path.exists():  # during a quick check, earlier runs are still in results/
+        path = REPO_RESULTS / f"{run_name}_training.json"
+    with open(path) as f:
+        return pd.DataFrame(json.load(f)["log"])
+
+
 def move_kinds(graded, fens):
     """Share of a model's legal answers that are pawn moves, captures, or checks.
 

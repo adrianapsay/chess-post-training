@@ -11,7 +11,7 @@ This project studies how post-training methods improve a small language model's 
 - **Training: Lichess games.** About 142,500 positions from games between players rated 2000+, each paired with the move that was played. Games give a large and varied set of realistic positions.
 - **Testing: Lichess puzzles.** 1,000 puzzles (plus 200 for quick checks), each with one correct move, so answers can be graded objectively. Puzzles are never used for training, and no training position appears among them.
 - **Why?** games supply many varied, realistic positions to learn from, while puzzles each have one verified answer, which makes them a fair exam. Keeping the two separate means test scores measure how well the model handles positions it has never seen (not whether it remembers answers from training).
-- **Planned:** training on Stockfish's best move for each game position instead of the move the player made, and possibly on puzzles (different ones from the test set).
+- **Variations after the progress report:** training on Stockfish's best move for each position instead of the move the player made (notebook 08), and on 100,000 positions instead of 20,000 (notebook 12). Notebook 11 adds two evaluations beyond puzzles: 1,000 held-out positions from games and full games against two opponents.
 
 ## Status
 
@@ -33,11 +33,21 @@ This project studies how post-training methods improve a small language model's 
 
 \*SFT ran before a memory fix and was slowed by it (its trial ran about 5 times faster per step), so compare methods by tokens rather than hours.
 
-**Still to do for the progress report (Nov 6)**
-- Finish the report: progress, contributions, results (Hannah)
-- Agree on the updated timeline (everyone)
+**After the progress report** (design and results in [section 8 of the project notes](docs/project_notes.md#8-after-the-progress-report-follow-up-experiments))
 
-**After the progress report (notebooks 08–11, ready to run on Databricks):** SFT on Stockfish's moves (08), DPO on the SFT model's own mistakes (09), RL with a KL penalty and a new reward (10), and every model on held-out game positions and in full games (11). Their design is in [section 8 of the project notes](docs/project_notes.md#8-after-the-progress-report-follow-up-experiments). Run them in order 08 → 09 → 10 → 11; combinations of methods (12) come after the first draft (Nov 24).
+| Notebook | Experiment | Status |
+|---|---|---|
+| 08 | SFT on Stockfish's moves (`sft_stockfish`) | done: 7.3%, no significant difference from SFT |
+| 09 | DPO on the SFT model's own mistakes (`dpo_v2`), plus an SFT loss (`dpo_v3`) | done: 4.4% and 6.7% |
+| 10 | RL with a KL penalty (`grpo_v2`), plus a new reward (`grpo_v3`) | done: 4.9% and 4.2% |
+| 11 | Every model on held-out game positions and in full games | running for the 9 models above; rerun after each new round |
+| 12 | SFT on 100,000 positions instead of 20,000 (`sft_100k`), with a data-scaling curve | ready to run |
+| 13 | Legal moves listed in the prompt (`sft_legal_moves`, `base_legal_moves`) | ready to run |
+| 14 | RL with a larger KL penalty, β = 0.1 and 0.2 (`grpo_v4`, `grpo_v5`) | ready to run |
+| 15 | Combinations: the best SFT, then the best DPO and RL settings | after 12–14 |
+| 16 | Final comparison of every model on every evaluation | last |
+
+Percentages are puzzle accuracy on the 1,000 test puzzles (SFT: 7.8%; a random legal move: 5.6%). So far no method beats SFT on puzzles; section 8 of the project notes explains what the training logs show about why. Notebooks 12, 13 and 14 do not depend on each other and can run at the same time as separate Jobs.
 
 ## Contributions up to Progress Report
 
@@ -106,9 +116,12 @@ Open each notebook in VS Code, choose the `.venv` kernel, and click **Run All**.
 | `08_sft_stockfish_moves` | Trains SFT on Stockfish's best moves instead of the players' moves (`sft_stockfish`), and grades it. |
 | `09_dpo_mistake_pairs` | Collects the SFT model's own mistakes as DPO pairs, then trains and grades `dpo_v2` (DPO) and `dpo_v3` (DPO + SFT loss). |
 | `10_grpo_kl_reward` | Trains and grades `grpo_v2` (KL penalty) and `grpo_v3` (KL penalty + new reward). |
-| `11_game_positions_and_games` | Grades every model on 1,000 held-out game positions and plays 50 games against a random mover and against Stockfish. |
+| `11_game_positions_and_games` | Grades every model on 1,000 held-out game positions and plays 50 games against a random mover and against Stockfish. Skips models that already have results, so rerun it after each round of new models. |
+| `12_sft_more_data` | Trains SFT on 100,000 positions (`sft_100k`), saving a copy after 20k, 40k, 60k and 80k examples, and grades every copy: puzzle accuracy against training data. |
+| `13_sft_legal_moves` | Lists the legal moves in the prompt: grades the base model with it (`base_legal_moves`), then trains and grades SFT with it (`sft_legal_moves`). |
+| `14_grpo_larger_kl` | Trains and grades `grpo_v4` (KL penalty β = 0.1) and `grpo_v5` (β = 0.2), and compares all four values of β. |
 
-Notebooks 08–11 have a `QUICK_CHECK` setting. Run once with `QUICK_CHECK = True` (a few minutes, tiny sizes, nothing saved to `results/`), then with `False` for the real run. Each saves its figures and tables in its own folder, `results/figures/<run name>/`. The earlier notebooks (00–07) and their results stay as they are.
+Notebooks 08–14 have a `QUICK_CHECK` setting. Run once with `QUICK_CHECK = True` (a few minutes, tiny sizes, nothing saved to `results/`), then with `False` for the real run. Each saves its figures and tables in its own folder, `results/figures/<run name>/`. The earlier notebooks (00–07) and their results stay as they are.
 
 Keep the laptop plugged in and stop it from sleeping while notebooks run.
 
@@ -123,6 +136,30 @@ git push
 ```
 
 Keep `checkpoints/sft_v1/`: it is the SFT model, and DPO and RL start from it. Back it up (zipped) to the team drive, since it is not on GitHub. The same goes for `checkpoints/dpo_v1/` and `checkpoints/grpo_v1/`.
+
+### Where the results are
+
+Every number and figure the paper uses comes from `results/`. There are three kinds of files:
+
+| File | What it holds | What it is for |
+|---|---|---|
+| `results/summary.csv` | one row per model (and a `_dev` row for its 200 dev puzzles): puzzle accuracy, legal/illegal/unparseable rates, ACPL, accuracy per rating band | the main comparison table |
+| `results/figures/<experiment>/` | that experiment's figures (`.png`) and tables (`.md` to read on GitHub, `.csv` to reuse) | figures for the paper, and the tables behind each claim (e.g. the paired comparisons with p-values) |
+| `results/<model>.json` | every test answer the model gave, and its grade | new analyses later without a GPU (e.g. the share of pawn moves) |
+
+Where to find each experiment (notebooks 08 onwards; the earlier figures are directly in `results/figures/`):
+
+| Notebook | Folder(s) in `results/figures/` | Question it answers | Main figures and tables |
+|---|---|---|---|
+| 08 | `sft_stockfish/` | Does SFT learn more from Stockfish's moves than from human moves? | `training_data` (how often the two agree), `puzzle_metrics.png`, `paired_comparison` |
+| 09 | `dpo_mistake_pairs/`, `dpo_v2/`, `dpo_v3/` | Does DPO work better on the model's own mistakes, and with an added SFT loss? | `pairs` (what the mistakes are), `dpo_diagnostics.png` (does the best move become more likely?), `paired_comparison` |
+| 10 | `grpo_v2/`, `grpo_v3/` | Does a KL penalty, or a reward without a legality bonus, stop RL's collapse to pawn moves? | `kl.png`, `move_kinds` (pawn moves, captures, checks), `paired_comparison` |
+| 11 | `game_evals/` | Do the models differ outside puzzles: blunders in ordinary positions, and results in full games? | `game_positions` (legal, ACPL, blunders, same move as Stockfish), `games_vs_random`, `games_vs_stockfish` |
+| 12 | `sft_100k/` | How much better does SFT get with more data? | `scaling_curve.png` (accuracy against training examples), `paired_comparison` |
+| 13 | `sft_legal_moves/` | Does listing the legal moves help, and is the problem knowing the rules or choosing a move? | `accuracy_when_legal` (table and figure), `answer_outcomes.png` |
+| 14 | `grpo_v4/`, `grpo_v5/` | Does a larger KL penalty keep RL closer to SFT and its accuracy? | `kl_by_beta.png`, `move_kinds`, `paired_comparison` |
+
+Every folder also has `puzzle_results` (the main table for that experiment). Notebook 11 matters most for DPO and RL: they were trained to avoid bad moves in ordinary game positions, not to solve puzzles, so it tests what they were actually trained for. Each figure is also shown inside its notebook; for Jobs on Databricks, those inline copies are on the Job's run page.
 
 ### DPO and RL training
 
