@@ -1,0 +1,6 @@
+| model | compared with | puzzles | solved only by this model | solved only by the other | p-value (sign test) |
+|---|---|---|---|---|---|
+| sft_stockfish | sft_v1 | 1000 | 27 | 32 | 0.6 |
+| sft_stockfish | base | 1000 | 68 | 23 | 2.5e-06 |
+
+Puzzles solved by only one of the two models, and the sign-test p-value (below 0.05 = unlikely to be chance).

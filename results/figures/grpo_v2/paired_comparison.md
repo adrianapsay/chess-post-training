@@ -1,0 +1,8 @@
+| model | compared with | puzzles | solved only by this model | solved only by the other | p-value (sign test) |
+|---|---|---|---|---|---|
+| grpo_v2 | sft_v1 | 1000 | 25 | 54 | 0.0015 |
+| grpo_v2 | grpo_v1 | 1000 | 21 | 5 | 0.0025 |
+| grpo_v3 | sft_v1 | 1000 | 21 | 57 | 5.6e-05 |
+| grpo_v3 | grpo_v2 | 1000 | 4 | 11 | 0.12 |
+
+Puzzles solved by only one of the two models, and the sign-test p-value (below 0.05 = unlikely to be chance).

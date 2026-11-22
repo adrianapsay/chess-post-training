@@ -1,0 +1,2 @@
+Data,Training positions,Human move = Stockfish's move (%),Answer changed by this experiment (%)
+sft_stockfish training data,20000,42.7,57.3
