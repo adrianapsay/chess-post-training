@@ -32,3 +32,10 @@ Contributions so far.
 - Added two evaluations for every model. The first grades 1,000 held-out game positions on legality, centipawn loss, blunder rate, and agreement with Stockfish and with the player. The second plays full games against a random mover and against Stockfish. The positions and openings are frozen in `data/eval/`.
 - Added 11 unit tests and described the design of each new experiment in the project notes (section 8).
 
+
+## Nathan (2026-11-23)
+
+- Built notebook 16, the final comparison of every model on every evaluation. It puts puzzle accuracy with 95% intervals, legal rate and ACPL, the held-out game positions, the full games, and the training tokens of every model in one table. It needs no GPU and skips models without results, so it can be rerun after each new round.
+- Compared every model with `sft_v1` on the same puzzles, with p-values adjusted for the number of comparisons (Holm's method). After the adjustment, `sft_legal_moves` is the only model significantly better than `sft_v1`, and the 100,000-position SFT models are not significantly different from it.
+- Split puzzle accuracy into the legal rate and the accuracy when the answer is legal, which separates naming possible moves from choosing good ones, and added a compute table that sums each model's training stages (for example SFT, then DPO, then RL).
+- Added the shared helpers `holm_adjust` and `training_stages` with 2 unit tests, and moved the random-move legend in two figures so it no longer covers the bars.
