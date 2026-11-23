@@ -11,7 +11,7 @@ This project studies how post-training methods improve a small language model's 
 - **Training: Lichess games.** About 142,500 positions from games between players rated 2000+, each paired with the move that was played. Games give a large and varied set of realistic positions.
 - **Testing: Lichess puzzles.** 1,000 puzzles (plus 200 for quick checks), each with one correct move, so answers can be graded objectively. Puzzles are never used for training, and no training position appears among them.
 - **Why?** games supply many varied, realistic positions to learn from, while puzzles each have one verified answer, which makes them a fair exam. Keeping the two separate means test scores measure how well the model handles positions it has never seen (not whether it remembers answers from training).
-- **Variations after the progress report:** training on Stockfish's best move for each position instead of the move the player made (notebook 08), and on 100,000 positions instead of 20,000 (notebook 12). Notebook 11 adds two evaluations beyond puzzles: 1,000 held-out positions from games and full games against two opponents.
+- **Variations after the progress report:** training on Stockfish's best move for each position instead of the move the player made (notebook 08), on 100,000 positions instead of 20,000 (notebooks 12 and 12b), and with the legal moves listed in the prompt (notebook 13). Notebook 11 adds two evaluations beyond puzzles: 1,000 held-out positions from games and full games against two opponents.
 
 ## Status
 
@@ -40,15 +40,15 @@ This project studies how post-training methods improve a small language model's 
 | 08 | SFT on Stockfish's moves (`sft_stockfish`) | done: 7.3%, no significant difference from SFT |
 | 09 | DPO on the SFT model's own mistakes (`dpo_v2`), plus an SFT loss (`dpo_v3`) | done: 4.4% and 6.7% |
 | 10 | RL with a KL penalty (`grpo_v2`), plus a new reward (`grpo_v3`) | done: 4.9% and 4.2% |
-| 11 | Every model on held-out game positions and in full games | done for the 9 models above: same ranking as on puzzles; RL loses fewer centipawns but finds Stockfish's move less often; no model wins a game against Stockfish. Rerun after each new round |
-| 12 | SFT on 100,000 positions instead of 20,000 (`sft_100k`), with a data-scaling curve | running |
-| 12b | The same 100,000 positions, on Stockfish's moves (`sft_100k_stockfish`): completes a 2 × 2 of answer source × data size | ready to run |
-| 13 | Legal moves listed in the prompt (`sft_legal_moves`, `base_legal_moves`) | running |
-| 14 | RL with a larger KL penalty, β = 0.1 and 0.2 (`grpo_v4`, `grpo_v5`) | running |
-| 15 | Combinations: the best SFT, then the best DPO and RL settings | after 12–14 and 12b |
+| 11 | Every model on held-out game positions and in full games | done for all 15 models: RL loses fewer centipawns but finds Stockfish's move less often; more SFT data and the legal-move list find it most often; no model wins a game against Stockfish. Rerun after each new round |
+| 12 | SFT on 100,000 positions instead of 20,000 (`sft_100k`) | done: 9.4% (not significant on puzzles alone, p = 0.14), clearly better on game positions |
+| 12b | The same 100,000 positions, on Stockfish's moves (`sft_100k_stockfish`): completes a 2 × 2 of answer source × data size | done: 9.2%; the answer source makes no difference, more data helps |
+| 13 | Legal moves listed in the prompt (`sft_legal_moves`, `base_legal_moves`) | done: **13.2%**, 100% legal, the best model and the first to clearly beat SFT; the base model with the list: 6.0% |
+| 14 | RL with a larger KL penalty, β = 0.1 and 0.2 (`grpo_v4`, `grpo_v5`) | done: 4.8% and 5.0%; less drift and fewer pawn moves, but no gain in accuracy |
+| 15 | Combinations: `sft_legal_moves`, then DPO (`dpo_v3`'s setting) and RL (β = 0.2) | designed; to be built |
 | 16 | Final comparison of every model on every evaluation | last |
 
-Percentages are puzzle accuracy on the 1,000 test puzzles (SFT: 7.8%; a random legal move: 5.6%). So far no method beats SFT on puzzles; section 8 of the project notes explains what the training logs show about why. Notebooks 12, 13 and 14 do not depend on each other and can run at the same time as separate Jobs.
+Percentages are puzzle accuracy on the 1,000 test puzzles (SFT: 7.8%; a random legal move: 5.6%). The changes to SFT's input (more data, the legal-move list) are the ones that improved the model; no DPO or RL setting has beaten the SFT model it started from. Section 8 of the project notes explains why, summarizes what worked best, and explains how this chose the combinations for notebook 15.
 
 ## Contributions up to Progress Report
 
@@ -157,12 +157,13 @@ Where to find each experiment (notebooks 08 onwards; the earlier figures are dir
 | 09 | `dpo_mistake_pairs/`, `dpo_v2/`, `dpo_v3/` | Does DPO work better on the model's own mistakes, and with an added SFT loss? | `pairs` (what the mistakes are), `dpo_diagnostics.png` (does the best move become more likely?), `paired_comparison` |
 | 10 | `grpo_v2/`, `grpo_v3/` | Does a KL penalty, or a reward without a legality bonus, stop RL's collapse to pawn moves? | `kl.png`, `move_kinds` (pawn moves, captures, checks), `paired_comparison` |
 | 11 | `game_evals/` | Do the models differ outside puzzles: blunders in ordinary positions, and results in full games? | `game_positions` (legal, ACPL, blunders, same move as Stockfish), `games_vs_random`, `games_vs_stockfish` |
-| 12 | `sft_100k/` | How much better does SFT get with more data? | `scaling_curve.png` (accuracy against training examples), `paired_comparison` |
+| 12 | `sft_100k/` | How much better does SFT get with more data? | `paired_comparison`, `scaling_curve.png` (accuracy of the copies saved during the run; progress during one run, not a data-scaling curve, see the notes) |
 | 12b | `sft_100k_stockfish/` | With 100,000 positions, do Stockfish's moves help? | `two_by_two` (accuracy of the four SFT models), `scaling_curves.png` (both 100k runs on the same axes), `paired_comparison` |
 | 13 | `sft_legal_moves/` | Does listing the legal moves help, and is the problem knowing the rules or choosing a move? | `accuracy_when_legal` (table and figure), `answer_outcomes.png` |
 | 14 | `grpo_v4/`, `grpo_v5/` | Does a larger KL penalty keep RL closer to SFT and its accuracy? | `kl_by_beta.png`, `move_kinds`, `paired_comparison` |
+| 08–14 | `findings_08_14/` | What worked best, across all experiments? | `puzzle_accuracy_all.png` (every model), `effects.png` and `effects` (the effect of each change, with intervals), `tradeoff.png` (finding the best move vs. losing fewer centipawns), `sft_two_by_two.png`, `legal_moves.png`, `rl_kl_penalty.png`, `invalid_moves.png` |
 
-Every folder also has `puzzle_results` (the main table for that experiment). Notebook 11 matters most for DPO and RL: they were trained to avoid bad moves in ordinary game positions, not to solve puzzles, so it tests what they were actually trained for. Each figure is also shown inside its notebook; for Jobs on Databricks, those inline copies are on the Job's run page.
+Every experiment folder (08–14) also has `puzzle_results` (the main table for that experiment). Notebook 11 matters most for DPO and RL: they were trained to avoid bad moves in ordinary game positions, not to solve puzzles, so it tests what they were actually trained for. Each figure of notebooks 08–14 is also shown inside its notebook; for Jobs on Databricks, those inline copies are on the Job's run page. The figures in `findings_08_14/` are drawn from the saved results and will be part of notebook 16.
 
 ### DPO and RL training
 
