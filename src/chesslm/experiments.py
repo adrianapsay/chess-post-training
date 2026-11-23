@@ -240,6 +240,46 @@ def compare_with(new_run, old_run):
             "p-value (sign test)": float(f"{sign_test(gained, lost):.2g}")}
 
 
+def load_positions(run_name):
+    """The graded held-out game positions of a run (one row per position, indexed by game and ply), or None."""
+    path = RESULTS / f"{run_name}_positions.json"
+    if not path.exists():  # during a quick check, earlier runs are still in results/
+        path = REPO_RESULTS / f"{run_name}_positions.json"
+    if not path.exists():
+        return None
+    with open(path) as f:
+        return pd.DataFrame(json.load(f)["rows"]).set_index(["game_id", "ply"])
+
+
+def change_effect(new_run, old_run):
+    """The effect of one change: new_run minus old_run, measured on the same puzzles and positions.
+
+    Returns the puzzle comparison of compare_with, plus three paired differences with 95% bootstrap
+    intervals, as (average, low, high):
+    - "puzzles": puzzle accuracy, in percentage points;
+    - "stockfish": how often the answer is Stockfish's move on the held-out game positions, in points;
+    - "cp_saved": centipawns saved per move, on the positions where both models answered legally
+      (positive = new_run loses fewer centipawns).
+    The two position measures are None if either model has no position results yet.
+    """
+    from chesslm.analysis import paired_difference
+
+    result = compare_with(new_run, old_run)
+    both = load_graded(new_run).merge(load_graded(old_run), on="puzzle_id", suffixes=("_new", "_old"))
+    result["puzzles"] = tuple(None if v is None else 100 * v for v in
+                              paired_difference(both.correct_new, both.correct_old))
+    new, old = load_positions(new_run), load_positions(old_run)
+    result["stockfish"] = result["cp_saved"] = (None, None, None)
+    if new is not None and old is not None:
+        new = new.loc[old.index]
+        result["stockfish"] = tuple(100 * v for v in paired_difference(new.matches_stockfish.astype(float),
+                                                                        old.matches_stockfish.astype(float)))
+        legal = (new.outcome == "legal") & (old.outcome == "legal")
+        result["cp_saved"] = paired_difference(old.cp_loss[legal], new.cp_loss[legal])
+        result["positions both legal"] = int(legal.sum())
+    return result
+
+
 # ---------------------------------------------------------------- compute across training stages
 
 def training_record(run_name):

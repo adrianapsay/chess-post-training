@@ -22,6 +22,24 @@ def wilson_interval(successes, n, z=1.96):
     return centre - half, centre + half
 
 
+def paired_difference(new, old, n_boot=10_000, seed=0):
+    """Average of new - old over the same items (puzzles or positions), with a 95% bootstrap interval.
+
+    new and old are equal-length numbers per item, e.g. 1 = solved, 0 = not. Resampling the
+    items keeps each pair together, so the interval reflects how much the two models differ
+    on the same items. Returns (average, low, high); all None if there are no items.
+    """
+    import numpy as np
+
+    differences = np.asarray(new, dtype=float) - np.asarray(old, dtype=float)
+    if len(differences) == 0:
+        return None, None, None
+    rng = np.random.default_rng(seed)
+    means = differences[rng.integers(0, len(differences), (n_boot, len(differences)))].mean(axis=1)
+    low, high = np.percentile(means, [2.5, 97.5])
+    return float(differences.mean()), float(low), float(high)
+
+
 def sign_test(gained, lost):
     """Two-sided p-value for a paired comparison of two models on the same puzzles.
 

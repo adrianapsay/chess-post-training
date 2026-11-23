@@ -2,7 +2,7 @@
 
 What we are doing and what the results show, readable without the code. Exact settings are in `configs/`, details are in each notebook, and setup instructions are in the [README](../README.md).
 
-As of Nov 5, all four models (base, SFT, DPO, and RL) are trained and graded. After the progress report we ran eleven new training runs (notebooks 08–14 and 12b) and added two new evaluations (notebook 11). Their design, results, what worked best, and how the results decide the combinations of methods (notebook 15) are in [section 8](#8-after-the-progress-report-follow-up-experiments).
+As of Nov 5, all four models (base, SFT, DPO, and RL) are trained and graded. After the progress report we ran fourteen new training runs (notebooks 08–15, 12b and 13b), including combinations of methods, and added two new evaluations (notebook 11). Their design, results, and a final summary of what worked best are in [section 8](#8-after-the-progress-report-follow-up-experiments).
 
 1. [The project](#1-the-project)
 2. [How the methods work](#2-how-the-methods-work)
@@ -169,7 +169,7 @@ Our proposal asks whether a method helps by reducing blunders or by improving ta
 
 **Next steps**
 
-*Update (Nov 23): this plan was written before the progress report. Steps 1 and 2 below, the evaluations on game positions and in games, and the legal-move ablation are now done, and step 3 is notebook 15. Their results are in [section 8](#8-after-the-progress-report-follow-up-experiments).*
+*Update (Nov 23): this plan was written before the progress report. Steps 1, 2 and 3 below (step 3 is notebook 15), the evaluations on game positions and in games, and the legal-move ablation are now done. Their results are in [section 8](#8-after-the-progress-report-follow-up-experiments).*
 
 Before the progress report (Nov 6):
 - Done: RL (notebook 06) has run, and notebook 07 compares all four models.
@@ -263,7 +263,7 @@ The first results raised three questions: would SFT learn more from Stockfish's 
 
 All new models are graded with the same puzzles, prompt, greedy decoding, and grader as before. Each experiment saves its tables and figures in its own folder, `results/figures/<model>/`; the [README](../README.md#where-the-results-are) has a map of every folder. All new runs used one NVIDIA A10G GPU on Databricks.
 
-**Status (Nov 23):** 08–14 and 12b are finished, and 11 has evaluated all 15 models on game positions and in full games. The summary of what worked is in [What worked best, and why](#what-worked-best-and-why-notebooks-0814), and the plan for the combinations that follows from it is in [Choosing the combinations](#15--choosing-the-combinations). Notebooks 15 (the combinations) and 13b (more data with the legal-move list) are built and run next, then 11 again for their models, then 16.
+**Status (Nov 23):** every training run is finished (08–15, 12b, 13b). The short version is the [Final summary](#final-summary-what-worked-best-notebooks-0815): the best model is `sft_100k_legal_moves` (17.5% of the test puzzles), and no combination with DPO or RL beat the SFT model it started from. Notebook 11 has evaluated the first 15 models on game positions and in games and is now running for the four newest; notebook 16 (the final comparison) is rerun after it.
 
 ### Results at a glance (notebooks 08–10)
 
@@ -353,7 +353,7 @@ Three observations from the results and training logs above:
 2. **The training signal and the test measure different things.** All training positions come from ordinary games, and the DPO pairs and RL reward favor moves that avoid large centipawn losses. Puzzles require one forcing tactical move. In ordinary positions a quiet move is often good enough, which is what RL learned: its reward rose while its puzzle accuracy fell. Notebook 11 confirms this in ordinary positions: the RL models' legal moves lose significantly fewer centipawns than `sft_v1`'s, but they play Stockfish's best move less often (see 11 below).
 3. **The fixes worked only partly.** The SFT loss kept DPO from lowering the best move's probability but did not raise it; the KL penalty slowed RL's drift away from SFT but β = 0.04 did not stop it.
 
-These motivate notebooks 12 (a stronger SFT starting point), 13 (separating "knowing which moves are legal" from "choosing a good one"), and 14 (a larger KL penalty).
+These motivate notebooks 12 (a stronger SFT starting point), 13 (separating "knowing which moves are legal" from "choosing a good one"), and 14 (a larger KL penalty). Notebook 15 later tested whether legality was behind DPO's and RL's failures: removing illegal answers did not make either of them improve on SFT (see [Results of the combinations](#15--results-of-the-combinations)).
 
 ### 11 · Held-out game positions and full games (every model)
 
@@ -521,6 +521,8 @@ These are the two evaluations our progress report committed to. They run on ever
 
 ### What worked best, and why (notebooks 08–14)
 
+*Written after notebook 14, before 13b and 15 had run; it explains how we chose the combinations. The updated summary, with 13b and 15, is in [Final summary](#final-summary-what-worked-best-notebooks-0815).*
+
 ![Puzzle accuracy of all 15 models with 95% intervals, colored by method](../results/figures/findings_08_14/puzzle_accuracy_all.png)
 
 *`results/figures/findings_08_14/puzzle_accuracy_all.png`.* Every model on the 1,000 test puzzles, with 95% intervals (Wilson), colored by method. The dashed line is a random legal move (5.6%). Only the SFT models and `sft_legal_moves` are clearly above it; no DPO or RL model is.
@@ -565,6 +567,8 @@ The combinations apply the best DPO and RL settings on top of the best SFT model
    With the legal moves listed, the model almost never answers illegally, and both signals become about move quality:
    - **RL:** GRPO scores each answer by how much better its reward is than the average of the other answers to the same position (the group of 8). When all 8 answers are legal, the legal bonus is the same for all of them and cancels out, so the only difference left between answers is how many centipawns they lose.
    - **DPO:** the model's own mistakes, which become the rejected answers, are now all legal blunders.
+
+   (Notebook 15 confirmed the DPO part: all rejected answers were legal blunders. For RL, legality was solved, but the model still drifted to quiet moves; see the results below.)
 3. **Its weakness is what DPO and RL are good at.** Its non-best moves are as bad as random (56% blunders), while RL reliably lowers centipawn loss and DPO's pairs target exactly the model's own blunders. If the combination works, it should keep `sft_legal_moves`' ability to find the best move and lose fewer centipawns when it misses.
 
 **The DPO setting: `dpo_v3`'s** (DPO + SFT loss on the chosen move), with pairs rebuilt from `sft_legal_moves`' own mistakes on new training positions, as in notebook 09. It is the only DPO variant that did not damage SFT, and the training logs show why (the SFT loss keeps the best move's probability).
@@ -583,7 +587,53 @@ Each is graded on the puzzles and in notebook 11. The main comparison is with `s
 
 **Caveat for the paper:** all combinations use the easier prompt. They are compared with `sft_legal_moves`, not with the models that had to work out the legal moves themselves.
 
-**Run alongside: `sft_100k_legal_moves`** (notebook 13b, see below). Notebook 15 does not wait for it. If it turns out clearly better than `sft_legal_moves`, the SFT → RL combination is run again from it.
+**Run alongside: `sft_100k_legal_moves`** (notebook 13b, see below). Notebook 15 did not wait for it. The plan was to run SFT → RL again from it if it turned out clearly better than `sft_legal_moves`. It did (17.5%), but RL made `sft_legal_moves` worse (results below), so we do not plan to repeat RL from it.
+
+### 15 · Results of the combinations
+
+All three combinations start from `sft_legal_moves` and use its prompt (legal moves listed). Test puzzles:
+
+| Model | Steps | Puzzle accuracy | vs. `sft_legal_moves` (13.2%): only this / only the other, p |
+|---|---|---|---|
+| `sft_legal_dpo` | SFT → DPO | 12.8% | 46 / 50, p = 0.76: **no change** |
+| `sft_legal_rl` | SFT → RL | 10.8% | 43 / 67, p = 0.028: **worse** |
+| `sft_legal_dpo_rl` | SFT → DPO → RL | 10.9% | 50 / 73, p = 0.047: **worse** |
+
+`sft_legal_dpo_rl` and `sft_legal_rl` are almost identical (29 vs. 28 puzzles, p = 1.0), so the DPO step made no difference to what RL did. **No combination improves on the SFT model it started from.** Every model stays 100% legal.
+
+**DPO: it learned exactly what it was trained on, but this did not change puzzle accuracy.**
+- As expected, the pairs changed: all 4,788 rejected answers are now legal blunders (0% illegal, vs. 50% for `dpo_v2`). `sft_legal_moves` made a mistake in 47.9% of the new positions it answered (`sft_v1`: 59.9%). The median rejected move loses 681 cp.
+- The training worked as designed: on held-out pairs, the model prefers Stockfish's move over its own mistake 90% of the time; Stockfish's move keeps its probability, and the model's own mistakes fall to about half their probability, the same pattern as `dpo_v3`.
+- But the model solves the same puzzles as before. Making the model's typical blunders less likely did not make it find the best move more often.
+- One observation from the logs: at the start of training, `sft_legal_moves` gave Stockfish's move a log-probability of −3.26 (about 3.8%), clearly more than `sft_v1`'s −4.19 (about 1.5%, notebook 09). So the legal-move model already considers the best move more likely.
+
+**RL: our hypothesis was wrong. Solving legality did not stop RL's drift towards quiet moves.**
+- We expected that with no illegal answers, the reward would only reward better moves (see "Choosing the combinations"). Legality was indeed solved: the average reward was +0.73 from the start (`grpo_v5`: −0.07), and no logged average fell below +0.68, so illegal answers were rare.
+- Yet the models still shifted to pawn moves, and away from checks:
+
+  | Model | Pawn moves | Captures | Checks |
+  |---|---|---|---|
+  | `sft_legal_moves` | 4% | 23% | 16% |
+  | `sft_legal_dpo` | 2% | 22% | 17% |
+  | `sft_legal_rl` | 24% | 23% | 11% |
+  | `sft_legal_dpo_rl` | 28% | 20% | 12% |
+
+  (Shares of each model's legal test answers.)
+- **Where RL lost:** mostly on **mate-in-1 puzzles**, which make up 110 of the 1,000 test puzzles, 88 of them in the easiest band. `sft_legal_rl` solves 5.5% of them vs. 11.8% for `sft_legal_moves` (2 gained, 9 lost), and its accuracy in the <1200 band halves (10.4% vs. 20.8%), while the other bands change little. DPO did not have this effect (12.7% of mate-in-1 puzzles).
+- **Small changes in probability, large changes in answers:** the KL divergence from the starting model stayed smaller than in any earlier RL run (0.08 over the last 100 steps, vs. 0.17 for `grpo_v5`), yet RL changed the answer on 60% of the test puzzles. With greedy decoding, the model always plays its single most likely move, so a small shift between two close options changes the answer.
+- **What it suggests:** legality was not what drove RL away from good moves; the reward itself was. The reward pays for losing few centipawns in ordinary game positions. There, a quiet pawn move is often safe, and a mate is rare, so the reward almost never pays for finding a mate. This is the same pattern as in every earlier RL run, now without legality as an alternative explanation. (This is our reading of the results, not something we tested directly.)
+- **Not yet known:** whether these models lose fewer centipawns on ordinary game positions, as every earlier RL model did. Notebook 11 evaluates them next.
+
+![Share of pawn moves, captures and checks for the combinations and their starting models](../results/figures/combinations/move_kinds.png)
+
+*`results/figures/combinations/move_kinds.png`.* What kind of moves each model plays, among its legal test answers. With the legal moves listed, the RL models (`sft_legal_rl`, `sft_legal_dpo_rl`) play pawn moves in 24–28% of their answers, far more than their starting point `sft_legal_moves` (4%) and even more than `grpo_v5` without the list (10%), and give check less often. DPO (`sft_legal_dpo`) leaves the kind of move unchanged.
+
+![Average reward during RL training, with and without the legal moves in the prompt](../results/figures/combinations/rl_reward.png)
+
+*`results/figures/combinations/rl_reward.png`.* The average reward of the sampled answers during RL training. With the legal moves listed (orange, green), the reward starts high (about 0.7) and rises only slightly, because almost every sampled answer is legal. Without the list (`grpo_v5`, blue), the reward starts below 0, because many sampled answers are illegal (−1 each), and rises during training.
+
+- **Figures and tables** (`results/figures/combinations/`): `pairs` (what the rejected answers are), `sft_legal_dpo_training_loss.png`, `sft_legal_dpo_dpo_diagnostics.png`, `sft_legal_rl_reward.png`, `sft_legal_rl_kl.png`, `sft_legal_dpo_rl_reward.png`, `sft_legal_dpo_rl_kl.png`, `rl_reward.png`, `rl_kl.png`, `puzzle_results`, `paired_comparison`, `move_kinds` (table and figure), `puzzle_metrics.png`, `accuracy_by_band.png`, `answer_outcomes.png`.
+- **Compute:** 0.54 GPU-hours for DPO and 1.14 for each RL run, on one A10 (the prompts with the list are longer), plus collecting the DPO pairs and grading.
 
 ### 13b · More data with the legal moves in the prompt (`sft_100k_legal_moves`)
 
@@ -601,9 +651,81 @@ Each is graded on the puzzles and in notebook 11. The main comparison is with `s
 
 - **As in notebook 12,** copies are saved after 20k, 40k, 60k and 80k examples and graded; the same learning-rate caveat applies (progress during one run, not a data-scaling curve).
 - **Compared with:** `sft_legal_moves` (the effect of more data with the list), `sft_100k` (the effect of the list with more data), `sft_v1`.
+- **Results: the two gains add up. `sft_100k_legal_moves` is our best model, at 17.5% of the test puzzles.**
+
+  | | 20,000 positions | 100,000 positions |
+  |---|---|---|
+  | **No list** | 7.8% (`sft_v1`) | 9.4% (`sft_100k`) |
+  | **Legal moves listed** | 13.2% (`sft_legal_moves`) | **17.5%** (`sft_100k_legal_moves`) |
+
+  - It is significantly better than every other model:
+    - vs. `sft_legal_moves`: 86 puzzles solved only by it, 43 only by `sft_legal_moves` (p = 0.0002), so more data helps with the list too;
+    - vs. `sft_100k`: 145 vs. 64 (p = 2 × 10⁻⁸), so the list helps with more data too;
+    - vs. `sft_v1`: 148 vs. 51 (p < 10⁻¹¹).
+  - It never answers illegally, and it improves in every rating band: <1200: 24.4%, 1200–1800: 14.0%, 1800–2400: 16.8%, 2400+: 14.8% (`sft_v1`: 8.4%, 8.4%, 10.8%, 3.6%). Its ACPL on puzzles is the lowest of any model (724 cp).
+  - **The gains are at least additive.** More data adds 1.6 points without the list but 4.3 points with it. This difference (+2.7 points) is not statistically clear (95% bootstrap interval −0.3 to +5.7), so we can say the two changes add up, but not that they reinforce each other.
+  - **Where the gain over `sft_100k` comes from:** on the 214 puzzles where `sft_100k` answered illegally, `sft_100k_legal_moves` solves 26%. On the 786 where `sft_100k` answered legally, it solves 15.1% vs. 12.0% (89 vs. 64 puzzles, p = 0.052, borderline). As in notebook 13, most of the list's gain comes from removing illegal answers, with a smaller, less certain gain in choosing among legal moves.
+  - **The learning-rate caveat appears again.** The copy saved after 20,000 examples scores 10.0%, significantly below `sft_legal_moves` (13.2%; 42 vs. 74 puzzles, p = 0.004), although both saw the same data (see 12). The copies after 60,000 and 80,000 examples and the final model all score about 17% (17.3%, 17.2%, 17.5%), but because the learning rate was still falling, this does not show that more data would stop helping. The validation loss fell from 0.52 (after 16,000 examples) to 0.47 and changed little after 80,000.
+  - **Game positions and games:** notebook 11 evaluates this model next.
+
+![Puzzle accuracy and legal rate of the copies saved during sft_100k and sft_100k_legal_moves](../results/figures/sft_100k_legal_moves/scaling_curves.png)
+
+*`results/figures/sft_100k_legal_moves/scaling_curves.png`.* Puzzle accuracy (left) and legal answers (right) of the copies saved during the two 100k runs: with the legal moves listed (orange) and without (blue). The orange line is above the blue one at every point, by 3 to 9 points, and it is always 100% legal. As in 12, read the curves as progress during one run: the early copies were saved before the learning rate had come down.
+
 - **Figures and tables** (`results/figures/sft_100k_legal_moves/`): `training_data` (positions and prompt length), `training_loss.png`, `scaling` and `scaling_curves.png` (this run and `sft_100k`), `two_by_two`, `puzzle_results`, `accuracy_when_legal`, `paired_comparison`, `puzzle_metrics.png`, `accuracy_by_band.png`, `answer_outcomes.png`.
-- **Compute:** about 6 hours of training on one A10 (the prompts are 2.4 times longer than in notebook 12), plus about 30 minutes of grading.
+- **Compute:** 5.3 GPU-hours of training on one A10 (22.6M tokens; the prompts are 2.4 times longer than in notebook 12), plus about 30 minutes of grading.
+
+### Final summary: what worked best (notebooks 08–15)
+
+Test-puzzle accuracy of the main models (1,000 puzzles; a random legal move solves 5.6%):
+
+| Model | What it is | Legal moves in the prompt | Puzzle accuracy |
+|---|---|---|---|
+| `sft_100k_legal_moves` | SFT, 100,000 positions | yes | **17.5%** |
+| `sft_legal_moves` | SFT, 20,000 positions | yes | 13.2% |
+| `sft_legal_dpo` | `sft_legal_moves` → DPO | yes | 12.8% |
+| `sft_legal_dpo_rl` | `sft_legal_moves` → DPO → RL | yes | 10.9% |
+| `sft_legal_rl` | `sft_legal_moves` → RL | yes | 10.8% |
+| `sft_100k` | SFT, 100,000 positions | no | 9.4% |
+| `sft_v1` | SFT, 20,000 positions (progress report) | no | 7.8% |
+| `dpo_v3` | best DPO from `sft_v1` | no | 6.7% |
+| `grpo_v5` | best RL from `sft_v1` | no | 5.0% |
+| base | no training | no | 2.8% |
+
+Every model, on every evaluation, is in notebook 16's table (`results/figures/final/final_results.md`).
+
+**What we found:**
+
+1. **Changing what SFT sees is what improved the model, and the two changes add up.**
+   - Listing the legal moves: +5.4 points with 20,000 positions, +8.1 with 100,000.
+   - 5 times more data: +1.6 points without the list, +4.3 with it.
+   - Together: 7.8% → 17.5%, our best model, better than every other model with p ≤ 0.0002.
+
+   Most of the list's gain comes from never answering illegally. More data also clearly improves play in ordinary game positions (notebook 12).
+2. **Which answer SFT learns does not matter.** Stockfish's moves and the players' moves give the same accuracy with 20,000 and with 100,000 positions, although they differ in 57% of the positions.
+3. **DPO never improved the SFT model it started from.** In four versions (`dpo_v1`, `dpo_v2`, `dpo_v3`, `sft_legal_dpo`), changing the rejected answers did not help. Adding the SFT loss stopped DPO from making the model worse, but not more. In every version, the model learned to prefer the better move on its training pairs, so the method worked as intended; avoiding the model's own blunders just did not lead it to the best move.
+4. **RL made every SFT model worse on puzzles.** All 7 RL models solve fewer puzzles than the model they started from. For the five RL models from `sft_v1` the drop is clearly significant (p ≤ 0.0015, and still below 0.05 after notebook 16's adjustment for multiple comparisons). For the two combinations it is borderline: p = 0.028 and 0.047 on their own, and no longer significant once the p-values are adjusted for the number of comparisons (Holm's method, as in notebook 16's `effects` table). So describe it as "a drop that is not statistically clear". The KL penalty limited the damage, but no setting removed it. Solving legality did not help either. The RL models consistently shift to quiet moves (pawn moves) and away from checks and mates. Their legal moves lose fewer centipawns in ordinary game positions (shown for the first five RL models; notebook 11 is checking the two new ones). Our reading: RL optimizes what its reward measures, avoiding losses in ordinary positions, and that is not what puzzles test.
+5. **Combining methods did not beat the best SFT model.** The best model is trained with SFT alone (`sft_100k_legal_moves`).
+
+**In one sentence:** in our setting, what the model sees during SFT (more data, the legal moves) decided how well it plays; DPO and RL learned what their training signals asked for, but that did not improve puzzle-solving, alone or in combination.
+
+**Caveats to state in the paper:**
+- Each model is one training run with one seed.
+- The legal-move list makes the task easier; compare models with the list only with each other.
+- We ran many comparisons, so a few p-values just below 0.05 can be chance. Notebook 16 adjusts the comparisons with `sft_v1` for this (Holm's method); after adjustment, the clear results above stay clear (for example `sft_100k_legal_moves`, p ≤ 0.0002 against every other model), while borderline ones, like RL after the combinations, should be described as "a drop that is not statistically clear".
+- The game-position and game results for the four newest models (`sft_100k_legal_moves` and the three combinations) come from notebook 11, which is running.
 
 ### 16 · Final comparison
 
-Notebook 16 puts every model, including the combinations, and every evaluation in one final table and set of figures. It needs no GPU. It is planned for the revised paper (Dec 11).
+Notebook 16 (built by Nathan) puts every model and every evaluation in one place. It needs no GPU and is rerun whenever new results are pushed. It contains:
+- one table of every model: puzzles with 95% intervals, game positions, games and training tokens;
+- each model compared with `sft_v1`, with p-values adjusted for the number of comparisons;
+- the split of puzzle accuracy into legal answers × accuracy when legal;
+- the compute of every model, summed over its training stages;
+- **the effect of each change** (`effects`): each model compared with the model it changes one thing in, on puzzles and game positions, with 95% intervals and adjusted p-values. This is the figure behind the final summary above;
+- **the two SFT 2 × 2 designs** (`sft_answer_source.png`, `sft_legal_list.png`): amount of data × answer source, and amount of data × the legal-move list;
+- **the trade-off map** (`tradeoff`): finding the best move vs. losing fewer centipawns, for every model;
+- **invalid moves** in single positions vs. whole games (`invalid_moves`);
+- **the kind of moves each model plays, and its accuracy on mate-in-1 puzzles** (`move_kinds`).
+
+Its outputs are in `results/figures/final/`. These replace the earlier summary figures in `results/figures/findings_08_14/`, which stay as they were (drawn before 13b and 15). It will be rerun once notebook 11 has evaluated the four newest models.

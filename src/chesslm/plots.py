@@ -2,6 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 # Colors follow the thing shown, in a fixed order: first run blue, second orange, third green, fourth yellow.
 # Figures with more than four runs (the final comparison) continue with purple, teal, red, grey.
@@ -325,4 +326,133 @@ def scaling_curves(tables, panels, references, path, title=None):
         ax.set_ylim(bottom=0)
         ax.legend(frameon=False, fontsize=8)
         _style(ax, label)
+    return _finish(fig, path, title)
+
+
+def paired_effects(effects, panels, path, title=None, note=None):
+    """The effect of each change as a dot with its 95% interval, one row per change and one panel per measure.
+
+    effects: one dict per change, with "label" and, for each panel key, an (average, low, high) tuple
+    (or Nones if not measured). panels = [(key, axis label, number format)]. A filled dot means the
+    interval excludes 0. Right is better in every panel.
+    """
+    fig, axes = plt.subplots(1, len(panels), figsize=(4.3 * len(panels) + 2.2, 0.55 * len(effects) + 1.6),
+                             facecolor=SURFACE, sharey=True, squeeze=False)
+    ys = np.arange(len(effects))[::-1]
+    for ax, (key, label, fmt) in zip(axes[0], panels):
+        _style(ax, "")
+        ax.grid(axis="y", visible=False)
+        ax.grid(axis="x", color=GRID, linewidth=0.8)
+        ax.axvline(0, color=MUTED, linewidth=1)
+        for y, effect in zip(ys, effects):
+            mean, low, high = effect.get(key, (None, None, None))
+            if mean is None:
+                ax.annotate("not measured yet", (0, y), xytext=(4, 0), textcoords="offset points", va="center",
+                            fontsize=7, color=MUTED)
+                continue
+            clear = low > 0 or high < 0
+            ax.plot([low, high], [y, y], color=COLORS[0], linewidth=2, solid_capstyle="round")
+            ax.plot(mean, y, "o", markersize=7, color=COLORS[0] if clear else SURFACE, markeredgecolor=COLORS[0],
+                    markeredgewidth=2)
+            ax.annotate(fmt.format(mean), (high, y), xytext=(5, 0), textcoords="offset points", va="center",
+                        fontsize=7, color=TEXT)
+        ax.set_xlabel(label + "\nbetter →", color=MUTED, fontsize=9)
+        left, right = ax.get_xlim()
+        ax.set_xlim(left, right + (right - left) * 0.15)
+    axes[0][0].set_yticks(ys, [effect["label"] for effect in effects], fontsize=8)
+    if note:
+        fig.text(0.01, 0.005, note, fontsize=8, color=MUTED)
+    return _finish(fig, path, title)
+
+
+def two_by_two(table, rows, columns, metrics, path, title=None, references=None):
+    """A 2 x 2 design as lines: one line per row of the design, its two columns on the x-axis.
+
+    table: one row per model, with each metric's value and its interval as "<metric>", "<metric> low",
+    "<metric> high" (in %). rows = {line label: [model in column 1, model in column 2]}; columns = the two
+    x-axis labels; metrics = [(metric, axis label)]. references = {metric: (label, value)} for a dashed line.
+    Models missing from the table are left out.
+    """
+    fig, axes = plt.subplots(1, len(metrics), figsize=(4 * len(metrics), 3.9), facecolor=SURFACE, squeeze=False)
+    for ax, (metric, ylabel) in zip(axes[0], metrics):
+        _style(ax, ylabel)
+        for i, (label, models) in enumerate(rows.items()):
+            points = [(x + (i - (len(rows) - 1) / 2) * 0.06, table.loc[m]) for x, m in enumerate(models)
+                      if m in table.index and pd.notna(table.loc[m, metric])]
+            if not points:
+                continue
+            xs = [x for x, _ in points]
+            values = [row[metric] for _, row in points]
+            errors = [[row[metric] - row[f"{metric} low"] for _, row in points],
+                      [row[f"{metric} high"] - row[metric] for _, row in points]]
+            ax.errorbar(xs, values, yerr=errors, color=COLORS[i], marker="o", markersize=8, linewidth=2, capsize=3,
+                        label=label)
+            for x, v in zip(xs, values):
+                ax.annotate(f"{v:.1f}", (x, v), xytext=(9 if i else -9, 0), textcoords="offset points",
+                            ha="left" if i else "right", va="center", fontsize=8, color=TEXT,
+                            bbox=dict(boxstyle="square,pad=0.15", fc=SURFACE, ec="none"))
+        if references and metric in references:
+            ref_label, value = references[metric]
+            ax.axhline(value, color=MUTED, linestyle="--", linewidth=1, label=ref_label)
+        ax.set_xticks(range(len(columns)), columns)
+        ax.set_xlim(-0.45, len(columns) - 0.55)
+        ax.set_ylim(bottom=0)
+    axes[0][0].legend(frameon=False, fontsize=8, loc="lower right")
+    return _finish(fig, path, title)
+
+
+def tradeoff_map(points, path, title=None, reference="sft_v1", offsets=None, groups=None):
+    """Each model as a dot: centipawns saved (x) against the change in Stockfish match (y), both vs. one reference.
+
+    points: one row per model with columns cp, cp low, cp high, sf, sf low, sf high and group (for the color
+    and the legend). offsets = {model: (dx, dy)} moves a label away from its dot (in points).
+    groups = the legend order of the groups (default: as they appear).
+    """
+    offsets = offsets or {}
+    groups = groups or list(dict.fromkeys(points.group))
+    color = {group: COLORS[i % len(COLORS)] for i, group in enumerate(groups)}
+    fig, ax = plt.subplots(figsize=(9, 6.8), facecolor=SURFACE)
+    _style(ax, f"same move as Stockfish vs. {reference} (percentage points)\nfinds the best move more often ↑")
+    ax.grid(axis="x", color=GRID, linewidth=0.8)
+    ax.axhline(0, color=MUTED, linewidth=1)
+    ax.axvline(0, color=MUTED, linewidth=1)
+    for model, row in points.iterrows():
+        c = color[row.group]
+        ax.errorbar(row.cp, row.sf, xerr=[[row.cp - row["cp low"]], [row["cp high"] - row.cp]],
+                    yerr=[[row.sf - row["sf low"]], [row["sf high"] - row.sf]], color=c, alpha=0.35, linewidth=1,
+                    capsize=0, zorder=1)
+        ax.plot(row.cp, row.sf, "o", color=c, markersize=9, markeredgecolor=SURFACE, markeredgewidth=2, zorder=3)
+        dx, dy = offsets.get(model, (6, 4))
+        ax.annotate(model, (row.cp, row.sf), xytext=(dx, dy), textcoords="offset points", fontsize=8, color=TEXT,
+                    ha="left" if dx >= 0 else "right", zorder=4)
+    ax.plot(0, 0, "o", color=SURFACE, markersize=9, markeredgecolor=TEXT, markeredgewidth=1.5, zorder=3)
+    ax.annotate(f"{reference} (reference)", (0, 0), xytext=(-8, -12), textcoords="offset points", fontsize=8,
+                ha="right", color=TEXT)
+    ax.set_xlabel(f"centipawns saved per legal move vs. {reference} (positions both answered legally)\n"
+                  "loses fewer centipawns →", color=MUTED)
+    handles = [plt.Line2D([], [], marker="o", linestyle="", color=color[g], markersize=8) for g in groups]
+    ax.legend(handles, groups, frameon=False, fontsize=8, loc="lower left")
+    return _finish(fig, path, title)
+
+
+def grouped_bars(table, xlabel, path, title=None, colors=None, fmt="{:.0f}"):
+    """Horizontal bars: one group per row of `table` (e.g. a model), one bar per column (e.g. a setting)."""
+    colors = colors or COLORS
+    fig, ax = plt.subplots(figsize=(9, 0.48 * len(table) * len(table.columns) / 2 + 1.6), facecolor=SURFACE)
+    _style(ax, "")
+    ax.grid(axis="y", visible=False)
+    ax.grid(axis="x", color=GRID, linewidth=0.8)
+    height = 0.8 / len(table.columns)
+    for j, column in enumerate(table.columns):
+        ys = np.arange(len(table)) + (j - (len(table.columns) - 1) / 2) * height  # first column on top
+        ax.barh(ys, table[column], height=height * 0.92, color=colors[j % len(colors)], label=column,
+                edgecolor=SURFACE, linewidth=1)
+        for y, value in zip(ys, table[column]):
+            if pd.notna(value):
+                ax.annotate(fmt.format(value), (value, y), xytext=(3, 0), textcoords="offset points", va="center",
+                            fontsize=7, color=TEXT)
+    ax.set_yticks(range(len(table)), table.index)
+    ax.invert_yaxis()
+    ax.set_xlabel(xlabel, color=MUTED)
+    ax.legend(frameon=False, fontsize=8, loc="lower right")
     return _finish(fig, path, title)

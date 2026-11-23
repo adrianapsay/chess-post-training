@@ -65,3 +65,11 @@ def test_holm_adjust():
     assert holm_adjust([0.01, 0.04, 0.03]) == pytest.approx([0.03, 0.06, 0.06])
     assert holm_adjust([0.5, 0.9]) == pytest.approx([1.0, 1.0])  # never above 1
     assert holm_adjust([]) == []
+
+
+def test_paired_difference():
+    from chesslm.analysis import paired_difference
+    mean, low, high = paired_difference([1, 1, 0, 1] * 50, [0, 1, 0, 0] * 50)
+    assert mean == pytest.approx(0.5)
+    assert low < 0.5 < high
+    assert paired_difference([], []) == (None, None, None)

@@ -45,11 +45,11 @@ This project studies how post-training methods improve a small language model's 
 | 12b | The same 100,000 positions, on Stockfish's moves (`sft_100k_stockfish`): completes a 2 × 2 of answer source × data size | done: 9.2%; the answer source makes no difference, more data helps |
 | 13 | Legal moves listed in the prompt (`sft_legal_moves`, `base_legal_moves`) | done: **13.2%**, 100% legal, the best model and the first to clearly beat SFT; the base model with the list: 6.0% |
 | 14 | RL with a larger KL penalty, β = 0.1 and 0.2 (`grpo_v4`, `grpo_v5`) | done: 4.8% and 5.0%; less drift and fewer pawn moves, but no gain in accuracy |
-| 13b | 100,000 positions with the legal moves in the prompt (`sft_100k_legal_moves`): do the two SFT gains add up? | ready to run |
-| 15 | Combinations: `sft_legal_moves`, then DPO (`dpo_v3`'s setting) and RL (β = 0.2): `sft_legal_dpo`, `sft_legal_rl`, `sft_legal_dpo_rl` | ready to run |
-| 16 | Final comparison of every model on every evaluation | last |
+| 13b | 100,000 positions with the legal moves in the prompt (`sft_100k_legal_moves`): do the two SFT gains add up? | done: **17.5%, the best model**, significantly better than every other model; the two gains add up |
+| 15 | Combinations: `sft_legal_moves`, then DPO (`dpo_v3`'s setting) and RL (β = 0.2): `sft_legal_dpo`, `sft_legal_rl`, `sft_legal_dpo_rl` | done: 12.8%, 10.8%, 10.9%; none beats `sft_legal_moves` (13.2%). DPO changes nothing; RL still shifts to quiet moves and loses mates, even with legality solved |
+| 16 | Final comparison of every model on every evaluation (built by Nathan) | done for the first 15 models; rerun after notebook 11 evaluates the four newest |
 
-Percentages are puzzle accuracy on the 1,000 test puzzles (SFT: 7.8%; a random legal move: 5.6%). The changes to SFT's input (more data, the legal-move list) are the ones that improved the model; no DPO or RL setting has beaten the SFT model it started from. Section 8 of the project notes explains why, summarizes what worked best, and explains how this chose the combinations for notebook 15.
+Percentages are puzzle accuracy on the 1,000 test puzzles (SFT: 7.8%; a random legal move: 5.6%). **In short:** the changes to what SFT sees (more data, the legal-move list) improved the model, and together they give the best model (17.5%). DPO and RL never beat the SFT model they started from, alone or in combination. The [final summary in the project notes](docs/project_notes.md#final-summary-what-worked-best-notebooks-0815) explains each finding and its caveats.
 
 ## Contributions up to Progress Report
 
@@ -125,6 +125,7 @@ Open each notebook in VS Code, choose the `.venv` kernel, and click **Run All**.
 | `13b_sft_legal_moves_more_data` | Notebook 12 with the legal moves in the prompt (`sft_100k_legal_moves`): do more data and the legal-move list add up? |
 | `14_grpo_larger_kl` | Trains and grades `grpo_v4` (KL penalty β = 0.1) and `grpo_v5` (β = 0.2), and compares all four values of β. |
 | `15_combinations` | Starting from `sft_legal_moves`: collects its own mistakes as DPO pairs, then trains and grades SFT → DPO (`sft_legal_dpo`), SFT → RL (`sft_legal_rl`) and SFT → DPO → RL (`sft_legal_dpo_rl`). |
+| `16_final_comparison` | Puts every model and every evaluation in one table and set of figures, compares every model with `sft_v1` (with adjusted p-values) and with the model it changes one thing in, and adds up each model's training compute. Needs no GPU; rerun it after new results are pushed. |
 
 Notebooks 08–15, 12b and 13b have a `QUICK_CHECK` setting. Run once with `QUICK_CHECK = True` (a few minutes, tiny sizes, nothing saved to `results/`), then with `False` for the real run. Each saves its figures and tables in its own folder, `results/figures/<run name>/`. The earlier notebooks (00–07) and their results stay as they are.
 
@@ -166,6 +167,7 @@ Where to find each experiment (notebooks 08 onwards; the earlier figures are dir
 | 14 | `grpo_v4/`, `grpo_v5/` | Does a larger KL penalty keep RL closer to SFT and its accuracy? | `kl_by_beta.png`, `move_kinds`, `paired_comparison` |
 | 13b | `sft_100k_legal_moves/` | Do more data and the legal-move list add up? | `two_by_two` (data size × prompt), `scaling_curves.png`, `paired_comparison` |
 | 15 | `combinations/` | Do DPO and RL improve on `sft_legal_moves` once legality is solved? | `puzzle_results`, `paired_comparison`, `pairs`, `move_kinds`, `rl_reward.png`, `rl_kl.png` |
+| 16 | `final/` | Every model on every evaluation, in one place, and what each change did | `final_results` (the main table), `effects` (each model vs. the model it changes, with intervals), `vs_sft_v1` (with adjusted p-values), `sft_answer_source.png` and `sft_legal_list.png` (the SFT 2 × 2s), `tradeoff`, `invalid_moves`, `move_kinds`, `compute` |
 | 08–14 | `findings_08_14/` | What worked best, across all experiments? | `puzzle_accuracy_all.png` (every model), `effects.png` and `effects` (the effect of each change, with intervals), `tradeoff.png` (finding the best move vs. losing fewer centipawns), `sft_two_by_two.png`, `legal_moves.png`, `rl_kl_penalty.png`, `invalid_moves.png` |
 
 Every experiment folder (08–14) also has `puzzle_results` (the main table for that experiment). Notebook 11 matters most for DPO and RL: they were trained to avoid bad moves in ordinary game positions, not to solve puzzles, so it tests what they were actually trained for. Each figure of notebooks 08–14 is also shown inside its notebook; for Jobs on Databricks, those inline copies are on the Job's run page. The figures in `findings_08_14/` are drawn from the saved results and will be part of notebook 16.
