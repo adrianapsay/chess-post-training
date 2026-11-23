@@ -45,7 +45,8 @@ This project studies how post-training methods improve a small language model's 
 | 12b | The same 100,000 positions, on Stockfish's moves (`sft_100k_stockfish`): completes a 2 × 2 of answer source × data size | done: 9.2%; the answer source makes no difference, more data helps |
 | 13 | Legal moves listed in the prompt (`sft_legal_moves`, `base_legal_moves`) | done: **13.2%**, 100% legal, the best model and the first to clearly beat SFT; the base model with the list: 6.0% |
 | 14 | RL with a larger KL penalty, β = 0.1 and 0.2 (`grpo_v4`, `grpo_v5`) | done: 4.8% and 5.0%; less drift and fewer pawn moves, but no gain in accuracy |
-| 15 | Combinations: `sft_legal_moves`, then DPO (`dpo_v3`'s setting) and RL (β = 0.2) | designed; to be built |
+| 13b | 100,000 positions with the legal moves in the prompt (`sft_100k_legal_moves`): do the two SFT gains add up? | ready to run |
+| 15 | Combinations: `sft_legal_moves`, then DPO (`dpo_v3`'s setting) and RL (β = 0.2): `sft_legal_dpo`, `sft_legal_rl`, `sft_legal_dpo_rl` | ready to run |
 | 16 | Final comparison of every model on every evaluation | last |
 
 Percentages are puzzle accuracy on the 1,000 test puzzles (SFT: 7.8%; a random legal move: 5.6%). The changes to SFT's input (more data, the legal-move list) are the ones that improved the model; no DPO or RL setting has beaten the SFT model it started from. Section 8 of the project notes explains why, summarizes what worked best, and explains how this chose the combinations for notebook 15.
@@ -121,9 +122,11 @@ Open each notebook in VS Code, choose the `.venv` kernel, and click **Run All**.
 | `12_sft_more_data` | Trains SFT on 100,000 positions (`sft_100k`), saving a copy after 20k, 40k, 60k and 80k examples, and grades every copy: puzzle accuracy against training data. |
 | `12b_sft_more_data_stockfish_moves` | Notebook 12 with Stockfish's best moves as the answers (`sft_100k_stockfish`), reusing notebook 08's labels for the first 20,000 positions. Compares the four SFT models (players' vs. Stockfish's moves, 20,000 vs. 100,000 positions). |
 | `13_sft_legal_moves` | Lists the legal moves in the prompt: grades the base model with it (`base_legal_moves`), then trains and grades SFT with it (`sft_legal_moves`). |
+| `13b_sft_legal_moves_more_data` | Notebook 12 with the legal moves in the prompt (`sft_100k_legal_moves`): do more data and the legal-move list add up? |
 | `14_grpo_larger_kl` | Trains and grades `grpo_v4` (KL penalty β = 0.1) and `grpo_v5` (β = 0.2), and compares all four values of β. |
+| `15_combinations` | Starting from `sft_legal_moves`: collects its own mistakes as DPO pairs, then trains and grades SFT → DPO (`sft_legal_dpo`), SFT → RL (`sft_legal_rl`) and SFT → DPO → RL (`sft_legal_dpo_rl`). |
 
-Notebooks 08–14 and 12b have a `QUICK_CHECK` setting. Run once with `QUICK_CHECK = True` (a few minutes, tiny sizes, nothing saved to `results/`), then with `False` for the real run. Each saves its figures and tables in its own folder, `results/figures/<run name>/`. The earlier notebooks (00–07) and their results stay as they are.
+Notebooks 08–15, 12b and 13b have a `QUICK_CHECK` setting. Run once with `QUICK_CHECK = True` (a few minutes, tiny sizes, nothing saved to `results/`), then with `False` for the real run. Each saves its figures and tables in its own folder, `results/figures/<run name>/`. The earlier notebooks (00–07) and their results stay as they are.
 
 Keep the laptop plugged in and stop it from sleeping while notebooks run.
 
@@ -161,6 +164,8 @@ Where to find each experiment (notebooks 08 onwards; the earlier figures are dir
 | 12b | `sft_100k_stockfish/` | With 100,000 positions, do Stockfish's moves help? | `two_by_two` (accuracy of the four SFT models), `scaling_curves.png` (both 100k runs on the same axes), `paired_comparison` |
 | 13 | `sft_legal_moves/` | Does listing the legal moves help, and is the problem knowing the rules or choosing a move? | `accuracy_when_legal` (table and figure), `answer_outcomes.png` |
 | 14 | `grpo_v4/`, `grpo_v5/` | Does a larger KL penalty keep RL closer to SFT and its accuracy? | `kl_by_beta.png`, `move_kinds`, `paired_comparison` |
+| 13b | `sft_100k_legal_moves/` | Do more data and the legal-move list add up? | `two_by_two` (data size × prompt), `scaling_curves.png`, `paired_comparison` |
+| 15 | `combinations/` | Do DPO and RL improve on `sft_legal_moves` once legality is solved? | `puzzle_results`, `paired_comparison`, `pairs`, `move_kinds`, `rl_reward.png`, `rl_kl.png` |
 | 08–14 | `findings_08_14/` | What worked best, across all experiments? | `puzzle_accuracy_all.png` (every model), `effects.png` and `effects` (the effect of each change, with intervals), `tradeoff.png` (finding the best move vs. losing fewer centipawns), `sft_two_by_two.png`, `legal_moves.png`, `rl_kl_penalty.png`, `invalid_moves.png` |
 
 Every experiment folder (08–14) also has `puzzle_results` (the main table for that experiment). Notebook 11 matters most for DPO and RL: they were trained to avoid bad moves in ordinary game positions, not to solve puzzles, so it tests what they were actually trained for. Each figure of notebooks 08–14 is also shown inside its notebook; for Jobs on Databricks, those inline copies are on the Job's run page. The figures in `findings_08_14/` are drawn from the saved results and will be part of notebook 16.

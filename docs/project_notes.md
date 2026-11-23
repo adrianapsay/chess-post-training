@@ -263,7 +263,7 @@ The first results raised three questions: would SFT learn more from Stockfish's 
 
 All new models are graded with the same puzzles, prompt, greedy decoding, and grader as before. Each experiment saves its tables and figures in its own folder, `results/figures/<model>/`; the [README](../README.md#where-the-results-are) has a map of every folder. All new runs used one NVIDIA A10G GPU on Databricks.
 
-**Status (Nov 23):** 08–14 and 12b are finished, and 11 has evaluated all 15 models on game positions and in full games. The summary of what worked is in [What worked best, and why](#what-worked-best-and-why-notebooks-0814), and the plan for the combinations that follows from it is in [Choosing the combinations](#15--choosing-the-combinations). 15 and 16 come next.
+**Status (Nov 23):** 08–14 and 12b are finished, and 11 has evaluated all 15 models on game positions and in full games. The summary of what worked is in [What worked best, and why](#what-worked-best-and-why-notebooks-0814), and the plan for the combinations that follows from it is in [Choosing the combinations](#15--choosing-the-combinations). Notebooks 15 (the combinations) and 13b (more data with the legal-move list) are built and run next, then 11 again for their models, then 16.
 
 ### Results at a glance (notebooks 08–10)
 
@@ -583,7 +583,26 @@ Each is graded on the puzzles and in notebook 11. The main comparison is with `s
 
 **Caveat for the paper:** all combinations use the easier prompt. They are compared with `sft_legal_moves`, not with the models that had to work out the legal moves themselves.
 
-**Optional, to be decided:** `sft_100k_legal_moves`, SFT with both changes that helped (100,000 positions and the legal-move list). It would be the strongest SFT model we can train, and the obvious test of whether the two gains add up. It costs about 6 GPU-hours on one A10.
+**Run alongside: `sft_100k_legal_moves`** (notebook 13b, see below). Notebook 15 does not wait for it. If it turns out clearly better than `sft_legal_moves`, the SFT → RL combination is run again from it.
+
+### 13b · More data with the legal moves in the prompt (`sft_100k_legal_moves`)
+
+- **Why we ran it:** both changes to SFT gave good results on their own, in different ways.
+  - More data (`sft_100k`) clearly improved the model on game positions: more legal answers, more of Stockfish's moves, and about 40 cp less lost per move.
+  - The legal-move list (`sft_legal_moves`) gave the best puzzle accuracy (13.2%) and removed illegal answers, but its moves that are not Stockfish's lose as much as random moves.
+
+  More data improved exactly what the legal-move model lacks, so the natural next question is whether the two gains add up. If they do, this is our strongest SFT model and a better starting point for DPO and RL. If they do not, that is also a result for the paper.
+- **What changes:** compared with `sft_legal_moves`, only the amount of data (100,000 positions instead of 20,000; the first 20,000 are the same, in the same order). Compared with `sft_100k`, only the prompt. With `sft_v1`, this completes a 2 × 2 of data size × prompt:
+
+  | | 20,000 positions | 100,000 positions |
+  |---|---|---|
+  | **No list** | `sft_v1` (7.8%) | `sft_100k` (9.4%) |
+  | **Legal moves listed** | `sft_legal_moves` (13.2%) | `sft_100k_legal_moves` |
+
+- **As in notebook 12,** copies are saved after 20k, 40k, 60k and 80k examples and graded; the same learning-rate caveat applies (progress during one run, not a data-scaling curve).
+- **Compared with:** `sft_legal_moves` (the effect of more data with the list), `sft_100k` (the effect of the list with more data), `sft_v1`.
+- **Figures and tables** (`results/figures/sft_100k_legal_moves/`): `training_data` (positions and prompt length), `training_loss.png`, `scaling` and `scaling_curves.png` (this run and `sft_100k`), `two_by_two`, `puzzle_results`, `accuracy_when_legal`, `paired_comparison`, `puzzle_metrics.png`, `accuracy_by_band.png`, `answer_outcomes.png`.
+- **Compute:** about 6 hours of training on one A10 (the prompts are 2.4 times longer than in notebook 12), plus about 30 minutes of grading.
 
 ### 16 · Final comparison
 
