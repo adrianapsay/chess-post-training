@@ -15,6 +15,10 @@
 | sft_legal_moves | 100.0 | 389.0 | 56.1 | 10.8 | 11.9 | 0.0 | 0.0 |
 | grpo_v4 | 77.6 | 342.0 | 38.2 | 4.1 | 4.6 | 22.4 | 0.0 |
 | grpo_v5 | 76.2 | 335.0 | 37.9 | 5.1 | 5.7 | 23.8 | 0.0 |
+| sft_100k_legal_moves | 100.0 | 344.0 | 49.5 | 15.1 | 19.2 | 0.0 | 0.0 |
+| sft_legal_dpo | 100.0 | 413.0 | 58.1 | 8.9 | 11.1 | 0.0 | 0.0 |
+| sft_legal_rl | 100.0 | 314.0 | 45.3 | 12.0 | 13.2 | 0.0 | 0.0 |
+| sft_legal_dpo_rl | 100.0 | 301.0 | 43.9 | 12.6 | 13.1 | 0.0 | 0.0 |
 | random legal move | 100.0 | 391.0 | 56.3 | 5.3 | 6.5 | 0.0 | 0.0 |
 
 1,000 held-out positions from games between 2000+ players. Blunder = a legal answer losing 200+ centipawns; its rate is over all answers. ACPL is over legal answers only.

@@ -29,3 +29,11 @@ grpo_v4,random,50,3,45,2,0.51,3919,0.3812,156.54
 grpo_v4,stockfish,50,0,3,47,0.03,1085,0.5816,43.84
 grpo_v5,random,50,4,44,2,0.52,4240,0.3809,169.5
 grpo_v5,stockfish,50,0,6,44,0.06,1469,0.597,59.14
+sft_100k_legal_moves,random,50,4,46,0,0.54,2323,0.0,92.54
+sft_100k_legal_moves,stockfish,50,0,19,31,0.19,1189,0.0,47.68
+sft_legal_dpo,random,50,1,49,0,0.51,3461,0.0,138.2
+sft_legal_dpo,stockfish,50,0,16,34,0.16,1013,0.0,40.7
+sft_legal_rl,random,50,10,40,0,0.6,2748,0.0,109.5
+sft_legal_rl,stockfish,50,0,9,41,0.09,1264,0.0,50.88
+sft_legal_dpo_rl,random,50,8,42,0,0.58,3003,0.0,119.78
+sft_legal_dpo_rl,stockfish,50,0,14,36,0.14,1311,0.0,52.66
