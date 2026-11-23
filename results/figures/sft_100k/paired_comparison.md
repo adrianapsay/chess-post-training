@@ -1,0 +1,6 @@
+| model | compared with | puzzles | solved only by this model | solved only by the other | p-value (sign test) |
+|---|---|---|---|---|---|
+| sft_100k | sft_v1 | 1000 | 60 | 44 | 0.14 |
+| sft_100k_at_20k | sft_v1 | 1000 | 35 | 46 | 0.27 |
+
+Puzzles solved by only one of the two models, and the sign-test p-value (below 0.05 = unlikely to be chance).

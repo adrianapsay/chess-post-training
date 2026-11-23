@@ -1,0 +1,6 @@
+Training examples,Model,Puzzle accuracy (%),Legal (%),ACPL (cp)
+20000,sft_100k_stockfish_at_20k,5.2,70.5,828.0
+40000,sft_100k_stockfish_at_40k,7.1,77.4,794.0
+60000,sft_100k_stockfish_at_60k,8.8,78.9,780.0
+80000,sft_100k_stockfish_at_80k,9.0,81.1,771.0
+100000,sft_100k_stockfish,9.2,80.9,766.0

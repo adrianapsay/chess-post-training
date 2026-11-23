@@ -9,5 +9,11 @@
 | dpo_v3 | 4.0 | 43.0 | 3.0 | 51.0 | 38.3 | 161.0 |
 | grpo_v2 | 3.0 | 44.0 | 3.0 | 50.0 | 43.8 | 164.0 |
 | grpo_v3 | 2.0 | 46.0 | 2.0 | 50.0 | 43.1 | 154.0 |
+| sft_100k | 5.0 | 45.0 | 0.0 | 55.0 | 23.2 | 138.0 |
+| sft_100k_stockfish | 0.0 | 50.0 | 0.0 | 50.0 | 19.7 | 139.0 |
+| base_legal_moves | 4.0 | 45.0 | 1.0 | 53.0 | 22.7 | 162.0 |
+| sft_legal_moves | 3.0 | 47.0 | 0.0 | 53.0 | 0.0 | 131.0 |
+| grpo_v4 | 3.0 | 45.0 | 2.0 | 51.0 | 38.1 | 157.0 |
+| grpo_v5 | 4.0 | 44.0 | 2.0 | 52.0 | 38.1 | 170.0 |
 
 50 games per model against a random mover, each opening once with each color. Invalid moves were replaced by a random legal move. Score = (wins + draws/2) / games.

@@ -9,5 +9,11 @@
 | dpo_v3 | 0.0 | 4.0 | 46.0 | 4.0 | 61.4 | 49.0 |
 | grpo_v2 | 0.0 | 5.0 | 45.0 | 5.0 | 62.4 | 46.0 |
 | grpo_v3 | 0.0 | 2.0 | 48.0 | 2.0 | 60.3 | 40.0 |
+| sft_100k | 0.0 | 7.0 | 43.0 | 7.0 | 42.4 | 49.0 |
+| sft_100k_stockfish | 0.0 | 7.0 | 43.0 | 7.0 | 41.9 | 49.0 |
+| base_legal_moves | 0.0 | 13.0 | 37.0 | 13.0 | 20.6 | 35.0 |
+| sft_legal_moves | 0.0 | 11.0 | 39.0 | 11.0 | 0.0 | 41.0 |
+| grpo_v4 | 0.0 | 3.0 | 47.0 | 3.0 | 58.2 | 44.0 |
+| grpo_v5 | 0.0 | 6.0 | 44.0 | 6.0 | 59.7 | 59.0 |
 
 50 games per model against Stockfish (depth 1), each opening once with each color. Invalid moves were replaced by a random legal move. Score = (wins + draws/2) / games.

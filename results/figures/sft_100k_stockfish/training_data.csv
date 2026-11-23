@@ -1,0 +1,3 @@
+Training data,Training positions,Player's move = Stockfish's move (%)
+"first 20,000 (sft_stockfish's data)",20000,42.7
+"all 100,000 (this run)",100000,42.6

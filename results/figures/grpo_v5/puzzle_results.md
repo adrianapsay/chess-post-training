@@ -1,0 +1,9 @@
+| Model | KL penalty beta | Puzzle accuracy (%) | <1200 | 1200-1800 | 1800-2400 | 2400+ | Legal (%) | Illegal (%) | Unparseable (%) | ACPL (cp) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| sft_v1 | – | 7.8 | 8.4 | 8.4 | 10.8 | 3.6 | 72.2 | 27.8 | 0.0 | 793.0 |
+| grpo_v1 | 0.0 | 3.3 | 3.2 | 0.8 | 6.0 | 3.2 | 81.6 | 18.4 | 0.0 | 836.0 |
+| grpo_v2 | 0.04 | 4.9 | 4.0 | 3.2 | 8.8 | 3.6 | 80.6 | 19.4 | 0.0 | 818.0 |
+| grpo_v4 | 0.1 | 4.8 | 4.8 | 3.2 | 7.6 | 3.6 | 80.2 | 19.8 | 0.0 | 825.0 |
+| grpo_v5 | 0.2 | 5.0 | 5.6 | 4.4 | 6.0 | 4.0 | 78.3 | 21.7 | 0.0 | 822.0 |
+
+1,000 test puzzles (250 per rating band). Rating-band columns are puzzle accuracy (%) in that band. ACPL is over legal answers only.

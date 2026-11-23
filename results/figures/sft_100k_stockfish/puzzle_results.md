@@ -1,0 +1,8 @@
+| Model | Puzzle accuracy (%) | <1200 | 1200-1800 | 1800-2400 | 2400+ | Legal (%) | Illegal (%) | Unparseable (%) | ACPL (cp) |
+|---|---|---|---|---|---|---|---|---|---|
+| sft_v1 | 7.8 | 8.4 | 8.4 | 10.8 | 3.6 | 72.2 | 27.8 | 0.0 | 793.0 |
+| sft_stockfish | 7.3 | 10.4 | 7.6 | 6.4 | 4.8 | 71.5 | 28.5 | 0.0 | 799.0 |
+| sft_100k | 9.4 | 14.4 | 8.0 | 9.6 | 5.6 | 78.6 | 21.4 | 0.0 | 777.0 |
+| sft_100k_stockfish | 9.2 | 16.4 | 8.0 | 6.4 | 6.0 | 80.9 | 19.1 | 0.0 | 766.0 |
+
+1,000 test puzzles (250 per rating band). Rating-band columns are puzzle accuracy (%) in that band. ACPL is over legal answers only.

@@ -1,0 +1,9 @@
+| Training examples | Model | Puzzle accuracy (%) | Legal (%) | ACPL (cp) |
+|---|---|---|---|---|
+| 20000 | sft_100k_at_20k | 6.7 | 72.0 | 805.0 |
+| 40000 | sft_100k_at_40k | 6.3 | 73.1 | 803.0 |
+| 60000 | sft_100k_at_60k | 8.1 | 77.0 | 794.0 |
+| 80000 | sft_100k_at_80k | 9.9 | 79.1 | 770.0 |
+| 100000 | sft_100k | 9.4 | 78.6 | 777.0 |
+
+Test-puzzle results of the copies saved during training and of the final model. ACPL is over legal answers only.

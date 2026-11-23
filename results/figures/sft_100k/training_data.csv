@@ -1,0 +1,3 @@
+Model,Training positions,Share of all training positions (%)
+sft_v1,20000,14.0
+sft_100k,100000,70.2
