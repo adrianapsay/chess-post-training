@@ -39,3 +39,16 @@ def test_new_summary_figures_draw(tmp_path):
     bars = pd.DataFrame({"positions": [35, 0], "games": [61, None]}, index=["sft_v1", "sft_legal_moves"])
     plots.grouped_bars(bars, "invalid (%)", tmp_path / "bars.png")
     assert all((tmp_path / name).exists() for name in ["effects.png", "two_by_two.png", "tradeoff.png", "bars.png"])
+
+
+def test_puzzle_before_after_gif(tmp_path):
+    puzzles = pd.DataFrame({"puzzle_id": ["a", "b"], "fen": ["6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1"] * 2,
+                            "answer_uci": ["a1a8"] * 2, "rating": [900, 1500]})
+    before = pd.DataFrame({"puzzle_id": ["a", "b"], "reply": ["Ke9", "h2h3"], "move": [None, "h2h3"],
+                           "outcome": ["illegal", "legal"], "correct": [False, False]}).set_index("puzzle_id")
+    after = pd.DataFrame({"puzzle_id": ["a", "b"], "reply": ["a1a8", "a1a8"], "move": ["a1a8", "a1a8"],
+                          "outcome": ["legal", "legal"], "correct": [True, True]}).set_index("puzzle_id")
+    path = plots.puzzle_before_after(puzzles, before, after, tmp_path / "before_after.gif",
+                                     labels=("before: base", "after: best"), seconds_per_puzzle=0.5)
+    from PIL import Image
+    assert Image.open(path).n_frames == 2

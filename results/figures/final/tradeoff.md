@@ -1,0 +1,22 @@
+| Model | Group | Centipawns saved vs. sft_v1 | Same as Stockfish vs. sft_v1 (points) |
+|---|---|---|---|
+| base | base model | +38 [-4, +80] | -3.8 [-5.7, -2.0] |
+| base_legal_moves | legal moves listed (no DPO / RL) | -3 [-36, +30] | +1.7 [-0.6, +4.0] |
+| sft_stockfish | SFT | -16 [-37, +5] | +0.4 [-1.1, +1.9] |
+| sft_100k | SFT | +38 [+12, +64] | +3.6 [+1.5, +5.7] |
+| sft_100k_stockfish | SFT | +20 [-8, +48] | +3.1 [+1.1, +5.1] |
+| sft_legal_moves | legal moves listed (no DPO / RL) | -13 [-42, +15] | +4.3 [+2.0, +6.6] |
+| sft_100k_legal_moves | legal moves listed (no DPO / RL) | +43 [+13, +72] | +8.6 [+6.1, +11.1] |
+| dpo_v1 | DPO from sft_v1 | -6 [-31, +19] | -1.3 [-2.9, +0.3] |
+| dpo_v2 | DPO from sft_v1 | +25 [-5, +56] | -2.3 [-4.2, -0.4] |
+| dpo_v3 | DPO from sft_v1 | +11 [-6, +28] | -0.4 [-1.8, +1.0] |
+| grpo_v1 | RL from sft_v1 | +68 [+41, +96] | -4.0 [-5.8, -2.2] |
+| grpo_v2 | RL from sft_v1 | +52 [+24, +79] | -3.3 [-5.0, -1.6] |
+| grpo_v3 | RL from sft_v1 | +63 [+35, +91] | -3.0 [-4.8, -1.2] |
+| grpo_v4 | RL from sft_v1 | +46 [+19, +72] | -2.4 [-4.2, -0.6] |
+| grpo_v5 | RL from sft_v1 | +46 [+22, +71] | -1.4 [-3.2, +0.4] |
+| sft_legal_dpo | DPO / RL after sft_legal_moves | -35 [-63, -7] | +2.4 [+0.3, +4.5] |
+| sft_legal_rl | DPO / RL after sft_legal_moves | +68 [+39, +97] | +5.5 [+3.0, +8.0] |
+| sft_legal_dpo_rl | DPO / RL after sft_legal_moves | +86 [+58, +113] | +6.1 [+3.6, +8.6] |
+
+Each model vs. sft_v1 on the 1,000 held-out game positions, with 95% bootstrap intervals. Centipawns saved: on positions both answered legally.

@@ -7,6 +7,7 @@
 | sft_100k | SFT | 100k positions, the player's move | 9.4 | 7.7-11.4 | 78.6 | 777 | 10.1 | 49.8 | 55.0 | 7.0 | 28.2 | 9.5 |
 | sft_100k_stockfish | SFT | 100k positions, Stockfish's move | 9.2 | 7.6-11.2 | 80.9 | 766 | 9.6 | 51.9 | 50.0 | 7.0 | 25.5 | 9.5 |
 | sft_legal_moves | SFT | 20k positions, legal moves listed in the prompt | 13.2 | 11.2-15.4 | 100.0 | 761 | 10.8 | 56.1 | 53.0 | 11.0 | 0.0 | 4.53 |
+| sft_100k_legal_moves | SFT | 100k positions, legal moves listed in the prompt | 17.5 | 15.3-20.0 | 100.0 | 724 | 15.1 | 49.5 | 54.0 | 19.0 | 0.0 | 22.65 |
 | dpo_v1 | DPO from sft_v1 | rejected = a random move losing 200+ cp | 5.9 | 4.6-7.5 | 63.3 | 820 | 5.2 | 55.0 | 52.0 | 2.0 | 52.2 | 2.77 |
 | dpo_v2 | DPO from sft_v1 | rejected = the model's own mistakes | 4.4 | 3.3-5.9 | 61.6 | 793 | 4.2 | 51.7 | 51.0 | 5.0 | 59.3 | 2.77 |
 | dpo_v3 | DPO from sft_v1 | own mistakes + SFT loss | 6.7 | 5.3-8.4 | 72.9 | 806 | 6.1 | 54.6 | 51.0 | 4.0 | 43.6 | 2.77 |
@@ -15,5 +16,8 @@
 | grpo_v3 | RL from sft_v1 | KL penalty 0.04, reward without legality bonus | 4.2 | 3.1-5.6 | 79.7 | 828 | 3.5 | 46.8 | 50.0 | 2.0 | 46.6 | 3.41 |
 | grpo_v4 | RL from sft_v1 | KL penalty 0.1 | 4.8 | 3.6-6.3 | 80.2 | 825 | 4.1 | 49.2 | 51.0 | 3.0 | 42.5 | 3.41 |
 | grpo_v5 | RL from sft_v1 | KL penalty 0.2 | 5.0 | 3.8-6.5 | 78.3 | 822 | 5.1 | 49.7 | 52.0 | 6.0 | 43.7 | 3.41 |
+| sft_legal_dpo | combination | sft_legal_moves -> DPO (dpo_v3's setting) | 12.8 | 10.9-15.0 | 100.0 | 770 | 8.9 | 58.1 | 51.0 | 16.0 | 0.0 | 6.67 |
+| sft_legal_rl | combination | sft_legal_moves -> RL (KL penalty 0.2) | 10.8 | 9.0-12.9 | 100.0 | 759 | 12.0 | 45.3 | 60.0 | 9.0 | 0.0 | 8.13 |
+| sft_legal_dpo_rl | combination | sft_legal_moves -> DPO -> RL | 10.9 | 9.1-13.0 | 100.0 | 758 | 12.6 | 43.9 | 58.0 | 14.0 | 0.0 | 10.27 |
 
 Puzzles: 1,000 test puzzles (a random legal move solves 5.6%); ACPL over legal answers. Positions: 1,000 held-out game positions. Games: 50 per opponent; score = (wins + draws/2) / games. Training tokens: summed over every training stage behind the model. A dash = not evaluated yet.

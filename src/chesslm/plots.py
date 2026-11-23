@@ -456,3 +456,96 @@ def grouped_bars(table, xlabel, path, title=None, colors=None, fmt="{:.0f}"):
     ax.set_xlabel(xlabel, color=MUTED)
     ax.legend(frameon=False, fontsize=8, loc="lower right")
     return _finish(fig, path, title)
+
+
+# ---------------------------------------------------------------- animated before/after on puzzles
+
+BOARD_LIGHT, BOARD_DARK = "#ecdab9", "#ae8a68"
+PIECE_GLYPHS = {"k": "♚", "q": "♛", "r": "♜", "b": "♝", "n": "♞", "p": "♟"}  # filled glyphs, colored per side
+
+
+def _draw_board(ax, board, move=None, arrow_color=None):
+    """Draw a position from the side to move's point of view, with an optional arrow for a move."""
+    import chess
+    from matplotlib import patheffects
+
+    flip = board.turn == chess.BLACK
+    ax.clear()
+    ax.set_xlim(0, 8)
+    ax.set_ylim(0, 8)
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+    def xy(square):  # the centre of a square on the drawn board
+        file, rank = chess.square_file(square), chess.square_rank(square)
+        return (7 - file + 0.5, 7 - rank + 0.5) if flip else (file + 0.5, rank + 0.5)
+
+    for square in chess.SQUARES:
+        x, y = xy(square)
+        light = (chess.square_file(square) + chess.square_rank(square)) % 2 == 1
+        ax.add_patch(plt.Rectangle((x - 0.5, y - 0.5), 1, 1, color=BOARD_LIGHT if light else BOARD_DARK, linewidth=0))
+        piece = board.piece_at(square)
+        if piece:
+            white = piece.color == chess.WHITE
+            ax.text(x, y - 0.04, PIECE_GLYPHS[piece.symbol().lower()], ha="center", va="center", fontsize=21,
+                    color="#ffffff" if white else "#111111",
+                    path_effects=[patheffects.withStroke(linewidth=1.6, foreground="#111111" if white else "#ffffff")])
+    if move is not None:
+        (x0, y0), (x1, y1) = xy(move.from_square), xy(move.to_square)
+        ax.annotate("", (x1, y1), (x0, y0), arrowprops=dict(arrowstyle="-|>,head_width=0.5,head_length=0.7",
+                                                            color=arrow_color, linewidth=4, alpha=0.85))
+
+
+def puzzle_before_after(puzzles, before, after, path, labels=("before", "after"), seconds_per_puzzle=1.8, note=None):
+    """An animated GIF of the same puzzles answered by two models, side by side, with running counts on top.
+
+    puzzles: rows with fen, answer_uci and rating (one frame per row, in order). before / after: each model's
+    graded answers (columns puzzle_id, reply, move, outcome, correct), indexed by puzzle_id. A green arrow is a
+    correct answer, a grey arrow a legal but wrong one; an illegal or unparseable answer is written in red.
+    note: a line printed at the bottom of every frame, e.g. how the puzzles were chosen. A GIF is often shared
+    without its caption, so any selection of puzzles should be stated here.
+    """
+    import chess
+    from matplotlib.animation import FuncAnimation, PillowWriter
+
+    fig, axes = plt.subplots(1, 2, figsize=(9, 5.6), facecolor=SURFACE)
+    fig.subplots_adjust(left=0.03, right=0.97, top=0.80, bottom=0.12, wspace=0.12)
+    headers = [fig.text(x, 0.955, "", ha="center", fontsize=12, fontweight="bold", color=TEXT) for x in (0.27, 0.73)]
+    counts = [fig.text(x, 0.915, "", ha="center", fontsize=9, color=MUTED) for x in (0.27, 0.73)]
+    puzzle_line = fig.text(0.5, 0.855, "", ha="center", fontsize=9, color=MUTED)
+    answers = [fig.text(x, 0.065, "", ha="center", fontsize=10) for x in (0.27, 0.73)]
+    if note:
+        fig.text(0.5, 0.015, note, ha="center", fontsize=8.5, color=MUTED, style="italic")
+    rows = list(puzzles.itertuples())
+
+    def frame(i):
+        row = rows[i]
+        board = chess.Board(row.fen)
+        solution = board.san(chess.Move.from_uci(row.answer_uci))
+        side = "White" if board.turn == chess.WHITE else "Black"
+        puzzle_line.set_text(f"puzzle {i + 1} of {len(rows)}  ·  rating {row.rating}  ·  {side} to move  ·  "
+                             f"solution: {solution}")
+        for k, (graded, label, ax) in enumerate(zip((before, after), labels, axes)):
+            answer = graded.loc[row.puzzle_id]
+            move, color = None, None
+            if answer.outcome == "legal":
+                move = chess.Move.from_uci(answer.move)
+                color = COLORS[2] if answer.correct else MUTED
+                text = f"{board.san(move)}  " + ("✓ correct" if answer.correct else "✗ wrong")
+                text_color = COLORS[2] if answer.correct else TEXT
+            else:
+                reply = str(answer.reply).strip().split("\n")[0][:18] or "(nothing)"
+                text, text_color = f"{reply}  ✗ {answer.outcome}", COLORS[6]
+            so_far = graded.loc[[r.puzzle_id for r in rows[: i + 1]]]  # counted afresh: frames can be drawn twice
+            _draw_board(ax, board, move, color)
+            headers[k].set_text(label)
+            counts[k].set_text(f"solved {int(so_far.correct.sum())} of {i + 1}  ·  "
+                               f"illegal or unreadable: {int((so_far.outcome != 'legal').sum())}")
+            answers[k].set_text(text)
+            answers[k].set_color(text_color)
+        return []
+
+    animation = FuncAnimation(fig, frame, frames=len(rows), blit=False, repeat=False)
+    animation.save(path, writer=PillowWriter(fps=1 / seconds_per_puzzle), dpi=100)
+    plt.close(fig)
+    return path

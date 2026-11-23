@@ -33,6 +33,10 @@ This project studies how post-training methods improve a small language model's 
 
 \*SFT ran before a memory fix and was slowed by it (its trial ran about 5 times faster per step), so compare methods by tokens rather than hours.
 
+![Before and after: the base model and our best model answering the same puzzles](results/figures/final/before_after_solved.gif)
+
+*The untrained base model (left) and our best model, `sft_100k_legal_moves` (right), on the same puzzles: green = correct, red = illegal. These are 30 puzzles the best model solves (it solves 17.5% of all 1,000); `results/figures/final/before_after_random.gif` shows 20 puzzles chosen at random.*
+
 **After the progress report** (design and results in [section 8 of the project notes](docs/project_notes.md#8-after-the-progress-report-follow-up-experiments))
 
 | Notebook | Experiment | Status |
@@ -40,16 +44,16 @@ This project studies how post-training methods improve a small language model's 
 | 08 | SFT on Stockfish's moves (`sft_stockfish`) | done: 7.3%, no significant difference from SFT |
 | 09 | DPO on the SFT model's own mistakes (`dpo_v2`), plus an SFT loss (`dpo_v3`) | done: 4.4% and 6.7% |
 | 10 | RL with a KL penalty (`grpo_v2`), plus a new reward (`grpo_v3`) | done: 4.9% and 4.2% |
-| 11 | Every model on held-out game positions and in full games | done for all 15 models: RL loses fewer centipawns but finds Stockfish's move less often; more SFT data and the legal-move list find it most often; no model wins a game against Stockfish. Rerun after each new round |
+| 11 | Every model on held-out game positions and in full games | done for all 19 models: RL loses fewer centipawns; `sft_100k_legal_moves` finds Stockfish's move most often (15%); the RL combinations make the fewest blunders (44–45%); no model wins a game against Stockfish |
 | 12 | SFT on 100,000 positions instead of 20,000 (`sft_100k`) | done: 9.4% (not significant on puzzles alone, p = 0.14), clearly better on game positions |
 | 12b | The same 100,000 positions, on Stockfish's moves (`sft_100k_stockfish`): completes a 2 × 2 of answer source × data size | done: 9.2%; the answer source makes no difference, more data helps |
 | 13 | Legal moves listed in the prompt (`sft_legal_moves`, `base_legal_moves`) | done: **13.2%**, 100% legal, the best model and the first to clearly beat SFT; the base model with the list: 6.0% |
 | 14 | RL with a larger KL penalty, β = 0.1 and 0.2 (`grpo_v4`, `grpo_v5`) | done: 4.8% and 5.0%; less drift and fewer pawn moves, but no gain in accuracy |
 | 13b | 100,000 positions with the legal moves in the prompt (`sft_100k_legal_moves`): do the two SFT gains add up? | done: **17.5%, the best model**, significantly better than every other model; the two gains add up |
-| 15 | Combinations: `sft_legal_moves`, then DPO (`dpo_v3`'s setting) and RL (β = 0.2): `sft_legal_dpo`, `sft_legal_rl`, `sft_legal_dpo_rl` | done: 12.8%, 10.8%, 10.9%; none beats `sft_legal_moves` (13.2%). DPO changes nothing; RL still shifts to quiet moves and loses mates, even with legality solved |
-| 16 | Final comparison of every model on every evaluation (built by Nathan) | done for the first 15 models; rerun after notebook 11 evaluates the four newest |
+| 15 | Combinations: `sft_legal_moves`, then DPO (`dpo_v3`'s setting) and RL (β = 0.2): `sft_legal_dpo`, `sft_legal_rl`, `sft_legal_dpo_rl` | done: 12.8%, 10.8%, 10.9% on puzzles; none beats `sft_legal_moves` (13.2%). RL still shifts to quiet moves and loses mates, even with legality solved. On game positions, RL after `sft_legal_moves` cuts losses sharply (blunders 56% → 45%) without finding the best move less often |
+| 16 | Final comparison of every model on every evaluation (built by Nathan) | done for all 19 models, with the effect of each change, the SFT 2 × 2s, the trade-off map and a before/after animation |
 
-Percentages are puzzle accuracy on the 1,000 test puzzles (SFT: 7.8%; a random legal move: 5.6%). **In short:** the changes to what SFT sees (more data, the legal-move list) improved the model, and together they give the best model (17.5%). DPO and RL never beat the SFT model they started from, alone or in combination. The [final summary in the project notes](docs/project_notes.md#final-summary-what-worked-best-notebooks-0815) explains each finding and its caveats.
+Percentages are puzzle accuracy on the 1,000 test puzzles (SFT: 7.8%; a random legal move: 5.6%). **In short:** the changes to what SFT sees (more data, the legal-move list) improved the model, and together they give the best model (17.5%). On puzzles, DPO and RL never beat the SFT model they started from, alone or in combination; on ordinary game positions, RL after the legal-move SFT model makes the fewest blunders of any model. The [final summary in the project notes](docs/project_notes.md#final-summary-what-worked-best-notebooks-0815) explains each finding and its caveats.
 
 ## Contributions up to Progress Report
 
