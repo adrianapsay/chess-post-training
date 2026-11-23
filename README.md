@@ -1,5 +1,26 @@
 # Chess LLM post-training (CS 289A)
 
+**Can post-training teach a small language model to play chess? We train Gemma 4 E2B with SFT, DPO and RL, alone and combined, and test every model on 1,000 Lichess puzzles it has never seen.**
+
+![course](https://img.shields.io/badge/course-CS%20289A-003262)
+![python](https://img.shields.io/badge/python-3.12%20%7C%203.13-3776AB)
+![model](https://img.shields.io/badge/model-Gemma%204%20E2B-4285F4)
+![methods](https://img.shields.io/badge/methods-SFT%20%C2%B7%20DPO%20%C2%B7%20RL-8a5cc7)
+![status](https://img.shields.io/badge/status-experiments%20complete-1baf7a)
+![best](https://img.shields.io/badge/best%20puzzle%20accuracy-17.5%25-eb6834)
+
+<p align="center">
+  <img src="results/figures/final/before_after_solved.gif" alt="The untrained base model and our best model answering the same chess puzzles, side by side" width="100%">
+</p>
+<p align="center"><em>The same puzzles, side by side. Left: the untrained base model (0 solved, 20 illegal or unreadable answers). Right: our best model, <code>sft_100k_legal_moves</code> (30 solved, none illegal). These are 30 puzzles the best model solves, chosen at random from the 175 it solves; overall it solves 17.5% of the 1,000 test puzzles. <a href="results/figures/final/before_after_random.gif">Here are 20 puzzles chosen at random</a>, with no selection.</em></p>
+
+## TL;DR
+
+- **Board in, move out.** The model reads a chess position as one line of text and answers with a single move. Stockfish, a chess engine, grades every answer. No test puzzle is ever trained on.
+- **What the model sees in training matters most.** Five times more training positions, plus listing the legal moves in the prompt, took puzzle accuracy from 7.8% to 17.5% (a random legal move solves 5.6%).
+- **DPO and RL learned their training signals, not puzzles.** None of their 11 runs beat the SFT model it started from on puzzles. RL drifts to quiet pawn moves and misses mates in one.
+- **But RL makes the fewest blunders.** In ordinary game positions, RL on top of the legal-move model blunders on 44–45% of its moves, vs. 56% for the legal-move model alone and for a random legal move.
+
 **Start here:** [docs/project_notes.md](docs/project_notes.md) explains what we did, notebook by notebook, what the results show, and the key facts for the report's Data and Methods sections. This README covers status, setup, and how to run things.
 
 ## Project description
@@ -32,10 +53,6 @@ This project studies how post-training methods improve a small language model's 
 | RL / GRPO (from SFT) | 3.3% | 82% | 0.54 GPU-hours (1.5M tokens) |
 
 \*SFT ran before a memory fix and was slowed by it (its trial ran about 5 times faster per step), so compare methods by tokens rather than hours.
-
-![Before and after: the base model and our best model answering the same puzzles](results/figures/final/before_after_solved.gif)
-
-*The untrained base model (left) and our best model, `sft_100k_legal_moves` (right), on the same puzzles: green = correct, red = illegal. These are 30 puzzles the best model solves (it solves 17.5% of all 1,000); `results/figures/final/before_after_random.gif` shows 20 puzzles chosen at random.*
 
 **After the progress report** (design and results in [section 8 of the project notes](docs/project_notes.md#8-after-the-progress-report-follow-up-experiments))
 

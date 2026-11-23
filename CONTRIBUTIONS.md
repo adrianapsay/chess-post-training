@@ -39,3 +39,21 @@ Contributions so far.
 - Compared every model with `sft_v1` on the same puzzles, with p-values adjusted for the number of comparisons (Holm's method). After the adjustment, `sft_legal_moves` is the only model significantly better than `sft_v1`, and the 100,000-position SFT models are not significantly different from it.
 - Split puzzle accuracy into the legal rate and the accuracy when the answer is legal, which separates naming possible moves from choosing good ones, and added a compute table that sums each model's training stages (for example SFT, then DPO, then RL).
 - Added the shared helpers `holm_adjust` and `training_stages` with 2 unit tests, and moved the random-move legend in two figures so it no longer covers the bars.
+
+## Adrian (2026-11-23)
+
+- Built notebooks 12–15, 12b and 13b, ready to run on Databricks, each with a quick-check mode and its own folder of figures and tables:
+  - SFT on 100,000 positions, with the players' moves (12) and with Stockfish's moves (12b);
+  - SFT and the base model with the legal moves listed in the prompt (13), and SFT on 100,000 positions with the list (13b);
+  - RL with larger KL penalties, β = 0.1 and 0.2 (14);
+  - the combinations of methods (15): SFT → DPO, SFT → RL and SFT → DPO → RL, starting from the legal-move SFT model.
+- Ran notebooks 08–15, 12b and 13b, and notebook 11 after each round, as Databricks Jobs on an A10 GPU: 14 new trained models, every model graded on the puzzles, the held-out game positions and full games.
+- Analysed every round of results with paired tests and bootstrap intervals, and wrote them up in the project notes (section 8). This includes the reasoning behind each new experiment and the facts for each section of the paper (section 9).
+- Added sections to notebook 16:
+  - the effect of each change, measured against the model it changes;
+  - the two SFT 2 × 2 designs;
+  - the trade-off between finding the best move and losing fewer centipawns;
+  - invalid moves in single positions vs. games;
+  - the kind of moves each model plays, and its accuracy on mates in one;
+  - two before/after animations of the base model and the best model on the same puzzles.
+- Added shared helpers for these (paired bootstrap differences, per-position results, the new figures), drew figure labels vertically where they would overlap, and added 7 unit tests.
