@@ -1,0 +1,8 @@
+| Model | Puzzle accuracy (%) | Legal (%) | Accuracy when legal (%) |
+|---|---|---|---|
+| sft_v1 | 7.8 | 72.2 | 10.8 |
+| sft_100k | 9.4 | 78.6 | 12.0 |
+| sft_legal_moves | 13.2 | 100.0 | 13.2 |
+| sft_100k_legal_moves | 17.5 | 100.0 | 17.5 |
+
+Accuracy when legal = puzzle accuracy among the legal answers only (accuracy / legal rate).

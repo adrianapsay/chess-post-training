@@ -1,0 +1,3 @@
+Model,Training positions,Average length (tokens),Longest (tokens)
+sft_legal_moves,20000,,
+sft_100k_legal_moves,100000,226.0,367.0

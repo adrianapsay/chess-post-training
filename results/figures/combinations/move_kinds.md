@@ -1,0 +1,11 @@
+| Model | Pawn moves (%) | Captures (%) | Checks (%) |
+|---|---|---|---|
+| sft_v1 | 1.7 | 25.2 | 18.3 |
+| dpo_v3 | 2.1 | 22.2 | 14.4 |
+| grpo_v5 | 9.5 | 11.5 | 13.2 |
+| sft_legal_moves | 4.0 | 22.6 | 16.4 |
+| sft_legal_dpo | 2.3 | 21.8 | 16.6 |
+| sft_legal_rl | 23.7 | 23.4 | 10.7 |
+| sft_legal_dpo_rl | 27.7 | 19.7 | 11.9 |
+
+Share of each model's legal test answers that are pawn moves, captures, or checks.
