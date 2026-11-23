@@ -20,11 +20,32 @@ def _style(ax, ylabel):
     ax.tick_params(colors=MUTED)
 
 
+def _turn_crowded_labels(fig, gap=4):
+    """Write the x-axis labels vertically on every panel where they would otherwise overlap (e.g. many model names).
+
+    Returns True if any panel was changed. gap: the smallest space (in pixels) allowed between two labels.
+    """
+    fig.canvas.draw()  # places the labels, so their sizes can be measured
+    renderer = fig.canvas.get_renderer()
+    turned = False
+    for ax in fig.axes:
+        if not ax.get_visible():
+            continue
+        boxes = sorted((label.get_window_extent(renderer) for label in ax.get_xticklabels() if label.get_text()),
+                       key=lambda box: box.x0)
+        if any(left.x1 + gap > right.x0 for left, right in zip(boxes, boxes[1:])):
+            ax.tick_params(axis="x", labelrotation=90)
+            turned = True
+    return turned
+
+
 def _finish(fig, path, title):
     """Add an optional title above the whole figure, then save it. Titles help readers who see a figure on its own."""
     if title:
         fig.suptitle(title, color=TEXT, fontsize=11)
     fig.tight_layout()
+    if _turn_crowded_labels(fig):
+        fig.tight_layout()  # make room for the vertical labels
     fig.savefig(path, dpi=200)
     return fig
 
@@ -59,8 +80,6 @@ def compare_metrics(summary, runs, path, title=None):
         _label_bars(ax, bars, fmt)
         _style(ax, label)
         ax.set_ylim(bottom=0)  # bars always start at zero
-        if max(map(len, runs)) > 8:  # long run names (e.g. sft_stockfish) would overlap
-            ax.tick_params(axis="x", labelrotation=30)
     return _finish(fig, path, title)
 
 
@@ -252,7 +271,6 @@ def metric_panels(table, panels, path, title=None):
         _label_bars(ax, bars, fmt)
         _style(ax, label)
         ax.set_ylim(bottom=0)
-        ax.tick_params(axis="x", labelrotation=30)
     return _finish(fig, path, title)
 
 

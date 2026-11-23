@@ -383,7 +383,7 @@ These are the two evaluations our progress report committed to. They run on ever
 
 ![Legal-move rate, ACPL, blunder rate and Stockfish-match rate of every model on 1,000 held-out game positions](../results/figures/game_evals/game_positions.png)
 
-*`results/figures/game_evals/game_positions.png`.* One bar per model, with a random legal move as the last bar. Left to right: legal answers (higher is better), ACPL of the legal answers (lower is better), blunders as a share of all answers (an illegal answer is not counted as a blunder, so a model with many illegal answers has fewer blunders here; the table above gives the blunder rate among legal answers), and how often the answer is Stockfish's move. The RL models (`grpo_*`) have the most legal answers and the lowest ACPL, but the lowest Stockfish match. In this version the model names on the x-axis overlap; the figure is redrawn with a clearer layout when notebook 11 is rerun for the new models.
+*`results/figures/game_evals/game_positions.png`.* One bar per model, with a random legal move as the last bar. Top row: legal answers (higher is better) and ACPL of the legal answers (lower is better). Bottom row: blunders as a share of all answers (an illegal answer is not counted as a blunder, so a model with many illegal answers has fewer blunders here; the table above gives the blunder rate among legal answers), and how often the answer is Stockfish's move. The RL models (`grpo_*`) have the most legal answers and the lowest ACPL, but the lowest Stockfish match.
 
 ![Wins, draws and losses of every model in 50 games against Stockfish at depth 1](../results/figures/game_evals/games_vs_stockfish.png)
 
