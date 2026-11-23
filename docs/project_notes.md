@@ -2,7 +2,7 @@
 
 What we are doing and what the results show, readable without the code. Exact settings are in `configs/`, details are in each notebook, and setup instructions are in the [README](../README.md).
 
-As of Nov 5, all four models (base, SFT, DPO, and RL) are trained and graded. After the progress report we ran five new training runs (notebooks 08–10) and added two new evaluations (notebook 11), and designed three more experiments (notebooks 12–14). Their design, results so far, and where to find each figure are in [section 8](#8-after-the-progress-report-follow-up-experiments).
+As of Nov 5, all four models (base, SFT, DPO, and RL) are trained and graded. After the progress report we ran five new training runs (notebooks 08–10) and added two new evaluations (notebook 11), and designed four more experiments (notebooks 12–14 and 12b). Their design, results so far, and where to find each figure are in [section 8](#8-after-the-progress-report-follow-up-experiments).
 
 1. [The project](#1-the-project)
 2. [How the methods work](#2-how-the-methods-work)
@@ -261,7 +261,7 @@ The first results raised three questions: would SFT learn more from Stockfish's 
 
 All new models are graded with the same puzzles, prompt, greedy decoding, and grader as before. Each experiment saves its tables and figures in its own folder, `results/figures/<model>/`; the [README](../README.md#where-the-results-are) has a map of every folder. All new runs used one NVIDIA A10G GPU on Databricks.
 
-**Status (Nov 22):** 08, 09 and 10 are finished (results below), and 11 has evaluated the nine models trained so far on game positions and in full games (results under 11). 12, 13 and 14 are designed and ready to run; 11 is rerun afterwards for their new models. 15 and 16 follow once those results are in.
+**Status (Nov 22):** 08, 09 and 10 are finished (results below), and 11 has evaluated the nine models trained so far on game positions and in full games (results under 11). 12, 13 and 14 are running, and 12b is ready to run; 11 is rerun afterwards for their new models. 15 and 16 follow once those results are in.
 
 ### Results at a glance (notebooks 08–10)
 
@@ -398,6 +398,22 @@ These are the two evaluations our progress report committed to. They run on ever
 - **Figures and tables** (`results/figures/sft_100k/`): `scaling_curve.png` and `scaling` (accuracy and legal rate against training examples), `training_loss.png`, `puzzle_results`, `paired_comparison`, `puzzle_metrics.png`, `accuracy_by_band.png`, `answer_outcomes.png`.
 - **Compute:** about 5 hours on one A10.
 
+### 12b · More training data, on Stockfish's moves (`sft_100k_stockfish`)
+
+- **What changes:** compared with `sft_100k`, only the answer the model learns: Stockfish's best move (depth 10), as in notebook 08, in the same 100,000 positions in the same order. It saves and grades copies after 20k, 40k, 60k and 80k examples, like notebook 12.
+- **Why:** notebook 08 found no significant difference between the players' moves and Stockfish's moves with 20,000 positions. One explanation is that 20,000 examples are too few for the model to learn which move is best from either kind of answer. With this run, the four SFT models form a 2 × 2 comparison of answer source and amount of data:
+
+  | | 20,000 positions | 100,000 positions |
+  |---|---|---|
+  | **Player's move** | `sft_v1` | `sft_100k` |
+  | **Stockfish's move** | `sft_stockfish` | `sft_100k_stockfish` |
+
+  If Stockfish's moves help only with enough data, the gap between the rows opens up in the 100,000 column.
+- **Labels:** the first 20,000 positions reuse notebook 08's Stockfish labels; the other 80,000 are labelled in chunks of 10,000, each saved as soon as it is done (`data/processed/sft_100k_stockfish_labels/`, not on GitHub).
+- **Compared with:** `sft_100k` (the answer source with 100,000 positions), `sft_stockfish` (the extra data with Stockfish's moves), `sft_v1`; and the 20k copy with `sft_stockfish` (the learning-rate schedule caveat, as in 12).
+- **Figures and tables** (`results/figures/sft_100k_stockfish/`): `two_by_two` (puzzle accuracy of the four SFT models), `scaling_curves.png` and `scaling` (this run and `sft_100k` on the same axes), `training_data` (how often the player's move equals Stockfish's), `training_loss.png`, `puzzle_results`, `paired_comparison`, `puzzle_metrics.png`, `accuracy_by_band.png`, `answer_outcomes.png`.
+- **Compute:** about 1–1.5 hours of labelling and 5 hours of training on one A10.
+
 ### 13 · Listing the legal moves in the prompt (`sft_legal_moves`, `base_legal_moves`)
 
 - **What changes:** the prompt gains one line listing every legal move in the position (`show_legal_moves` in `configs/prompt.yaml`, which existed but was off). The model must still choose a move, but no longer has to work out from the FEN which moves are possible. Training uses `sft_v1`'s 20,000 positions and answers; training and grading both use the new prompt.
@@ -418,4 +434,4 @@ These are the two evaluations our progress report committed to. They run on ever
 
 ### 15–16 · Combinations and the final comparison
 
-Once 12–14 are in, notebook 15 combines the best SFT model with the best DPO and RL settings (for example SFT → DPO, SFT → RL, and SFT → DPO → RL); based on 09 and 10 so far, those settings are `dpo_v3`'s (DPO + SFT loss) and the best KL penalty from 10 and 14. If both more data and the legal-move list help, the SFT model for the combinations can use both. Notebook 16 puts every model and every evaluation in one final table and set of figures. These are planned for the revised paper (Dec 11).
+Once 12–14 and 12b are in, notebook 15 combines the best SFT model with the best DPO and RL settings (for example SFT → DPO, SFT → RL, and SFT → DPO → RL); based on 09 and 10 so far, those settings are `dpo_v3`'s (DPO + SFT loss) and the best KL penalty from 10 and 14. The SFT model for the combinations is the best of the SFT variants (more data, Stockfish's moves, the legal-move list), or a combination of those that help. Notebook 16 puts every model and every evaluation in one final table and set of figures. These are planned for the revised paper (Dec 11).

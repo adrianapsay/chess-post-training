@@ -309,11 +309,16 @@ def scaling_curve(table, panels, references, path, title=None):
     table: one row per model copy, indexed by training examples seen. panels = [(column, axis label)].
     references = {label: {column: value}}, drawn as dashed horizontal lines (e.g. sft_v1, a random move).
     """
+    return scaling_curves({"this run": table}, panels, references, path, title)
+
+
+def scaling_curves(tables, panels, references, path, title=None):
+    """Like scaling_curve, with one curve per run on the same axes. tables = {curve label: table}."""
     fig, axes = plt.subplots(1, len(panels), figsize=(4.6 * len(panels), 3.4), facecolor=SURFACE, squeeze=False)
     for ax, (column, label) in zip(axes[0], panels):
-        ax.plot(table.index / 1000, table[column], color=COLORS[0], linewidth=2, marker="o", markersize=7,
-                label="this run")
-        for value_color, (name, values) in zip(COLORS[1:], references.items()):
+        for color, (name, table) in zip(COLORS, tables.items()):
+            ax.plot(table.index / 1000, table[column], color=color, linewidth=2, marker="o", markersize=7, label=name)
+        for value_color, (name, values) in zip(COLORS[len(tables):], references.items()):
             if column in values:
                 ax.axhline(values[column], color=value_color, linestyle="--", linewidth=1.5, label=name)
         ax.set_xlabel("training examples seen (thousands)", color=MUTED)
