@@ -58,3 +58,10 @@ def test_illegal_reason(reply, reason):
 def test_illegal_reason_pinned_piece():
     assert illegal_reason(PINNED, "e2c3") == "leaves king in check"
     assert illegal_reason(PINNED, "Nc3") == "leaves king in check"
+
+
+def test_holm_adjust():
+    from chesslm.analysis import holm_adjust
+    assert holm_adjust([0.01, 0.04, 0.03]) == pytest.approx([0.03, 0.06, 0.06])
+    assert holm_adjust([0.5, 0.9]) == pytest.approx([1.0, 1.0])  # never above 1
+    assert holm_adjust([]) == []

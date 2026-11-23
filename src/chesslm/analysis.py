@@ -37,6 +37,20 @@ def sign_test(gained, lost):
     return min(1.0, 2 * tail)
 
 
+def holm_adjust(p_values):
+    """Holm-Bonferroni adjusted p-values, in the order given, for many comparisons at once.
+
+    Comparing many models with sft_v1 makes some p-values fall below 0.05 by chance alone.
+    An adjusted p-value below 0.05 keeps the chance of any false "real difference" under 5%.
+    """
+    order = sorted(range(len(p_values)), key=lambda i: p_values[i])
+    adjusted, running = [0.0] * len(p_values), 0.0
+    for rank, i in enumerate(order):
+        running = max(running, min(1.0, (len(p_values) - rank) * p_values[i]))
+        adjusted[i] = running
+    return adjusted
+
+
 # ---------------------------------------------------------------- random-move baseline
 
 def chance_correct(puzzle):

@@ -6,6 +6,7 @@ to its own folder, results/figures/<run name>/.
 """
 
 import json
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -237,3 +238,34 @@ def compare_with(new_run, old_run):
     return {"model": new_run, "compared with": old_run, "puzzles": len(both),
             "solved only by this model": gained, "solved only by the other": lost,
             "p-value (sign test)": float(f"{sign_test(gained, lost):.2g}")}
+
+
+# ---------------------------------------------------------------- compute across training stages
+
+def training_record(run_name):
+    """The saved training record of a run (results/<run>_training.json), or None if it was not trained."""
+    path = RESULTS / f"{run_name}_training.json"
+    if not path.exists():  # during a quick check, earlier runs are still in results/
+        path = REPO_RESULTS / f"{run_name}_training.json"
+    if not path.exists():
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
+def training_stages(run_name):
+    """Every training stage behind a model, first to last, e.g. [sft_v1, dpo_v3, sft_v1_dpo_rl].
+
+    Follows each record's start adapter back to an SFT model (which starts from the base
+    model). Each stage is a dict with its name and its compute (GPU-hours, tokens seen, GPU).
+    """
+    stages, name = [], run_name
+    while name and len(stages) < 10:
+        record = training_record(name)
+        if record is None:
+            break
+        stages.append({"stage": name, **record["compute"]})
+        start = record.get("start_adapter")
+        # The folder name of the start adapter, from a Windows or a Databricks path
+        name = re.split(r"[\\/]", start.rstrip("\\/"))[-1] if start else None
+    return stages[::-1]

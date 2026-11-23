@@ -164,7 +164,7 @@ def accuracy_with_intervals(table, chance, path, title=None):
         ax.annotate(f"{bar.get_height():.1f}", (bar.get_x() + bar.get_width() / 2, high),
                     ha="center", va="bottom", fontsize=8, color=TEXT, xytext=(0, 2), textcoords="offset points")
     ax.axhline(chance * 100, color=MUTED, linewidth=1.2, linestyle="--", label=f"random legal move ({chance:.1%})")
-    ax.legend(frameon=False, loc="upper left")
+    ax.legend(frameon=False, loc="lower right", bbox_to_anchor=(1.0, 1.0))  # above the bars
     _style(ax, "puzzle accuracy (%)")
     ax.set_ylim(bottom=0)
     return _finish(fig, path, title)
@@ -174,7 +174,7 @@ def accuracy_decomposition(table, chance, path, title=None):
     """Accuracy = (share of legal answers) x (accuracy when the answer is legal), one panel for each factor."""
     fig, axes = plt.subplots(1, 2, figsize=(10, 3.2), facecolor=SURFACE)
     runs = list(table.index)
-    panels = [("legal_rate", "legal answers (%)"), ("accuracy_when_legal", "accuracy when the answer is legal (%)")]
+    panels = [("legal_rate", "legal answers (%)"), ("accuracy_when_legal", "accuracy when legal (%)")]
     for ax, (column, label) in zip(axes, panels):
         bars = ax.bar(runs, table[column] * 100, color=COLORS[: len(runs)], edgecolor=SURFACE, linewidth=2)
         _label_bars(ax, bars, "{:.1f}")
@@ -182,7 +182,7 @@ def accuracy_decomposition(table, chance, path, title=None):
         ax.set_ylim(bottom=0)
     axes[1].axhline(chance * 100, color=MUTED, linewidth=1.2, linestyle="--",
                     label=f"random legal move ({chance:.1%})")
-    axes[1].legend(frameon=False, loc="upper left")
+    axes[1].legend(frameon=False, loc="lower right", bbox_to_anchor=(1.0, 1.0))  # above the bars
     return _finish(fig, path, title)
 
 
