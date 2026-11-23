@@ -261,7 +261,7 @@ The first results raised three questions: would SFT learn more from Stockfish's 
 
 All new models are graded with the same puzzles, prompt, greedy decoding, and grader as before. Each experiment saves its tables and figures in its own folder, `results/figures/<model>/`; the [README](../README.md#where-the-results-are) has a map of every folder. All new runs used one NVIDIA A10G GPU on Databricks.
 
-**Status (Nov 22):** 08, 09 and 10 are finished (results below). 11 is running for the nine models trained so far. 12, 13 and 14 are designed and ready to run. 15 and 16 follow once those results are in.
+**Status (Nov 22):** 08, 09 and 10 are finished (results below), and 11 has evaluated the nine models trained so far on game positions and in full games (results under 11). 12, 13 and 14 are designed and ready to run; 11 is rerun afterwards for their new models. 15 and 16 follow once those results are in.
 
 ### Results at a glance (notebooks 08–10)
 
@@ -289,7 +289,7 @@ A random legal move solves 5.6%. With 1,000 puzzles, the 95% margin of error at 
 - **Compared with:** `sft_v1` (the effect of the answer source) and the base model.
 - **Also reported:** how often the human move and Stockfish's move agree in the training positions, which shows how much the training data actually changes.
 - **Results:** the player's move equals Stockfish's in only 42.7% of the 20,000 training positions, so the experiment changed 57.3% of the answers. Yet `sft_stockfish` scores about the same as `sft_v1`: 7.3% vs. 7.8%, legal 71.5% vs. 72.2%; 27 puzzles are solved only by `sft_stockfish` and 32 only by `sft_v1` (p = 0.6, no significant difference). It is far better than the base model (68 vs. 23, p = 2.5 × 10⁻⁶).
-- **What it suggests:** with 20,000 examples, the model does not learn *which* move is best from either kind of answer; it learns the answer format and plausible-looking moves. Notebook 11's "same as Stockfish" and "same as the player" columns will show whether its moves changed in ordinary positions.
+- **What it suggests:** with 20,000 examples, the model does not learn *which* move is best from either kind of answer; it learns the answer format and plausible-looking moves. Notebook 11 confirms this in ordinary game positions: `sft_stockfish` plays Stockfish's move in 6.9% of them and the player's move in 5.9%, vs. 6.5% and 6.8% for `sft_v1`, and neither difference is significant.
 ![Puzzle accuracy, legal-move rate and ACPL of base, sft_v1 and sft_stockfish](../results/figures/sft_stockfish/puzzle_metrics.png)
 
 *`results/figures/sft_stockfish/puzzle_metrics.png`.* Both SFT models are far above the base model on every metric, and nearly identical to each other: 7.8% vs. 7.3% accuracy, 72.2% vs. 71.5% legal answers, ACPL 793 vs. 799 (lower is better).
@@ -348,7 +348,7 @@ A random legal move solves 5.6%. With 1,000 puzzles, the 95% margin of error at 
 Three observations from the results and training logs above:
 
 1. **The SFT model gives the best move little probability, so there is little for DPO and RL to sharpen.** DPO and RL do not teach new moves; they shift probability between answers the model already produces. At the start of DPO training, `sft_v1` gave Stockfish's move a log-probability of about −4.2, a probability of roughly 1.5%. `sft_stockfish` points the same way: changing 57% of the training answers did not change puzzle accuracy, so 20,000 examples do not seem to be enough for the model to learn which move is best.
-2. **The training signal and the test measure different things.** All training positions come from ordinary games, and the DPO pairs and RL reward favor moves that avoid large centipawn losses. Puzzles require one forcing tactical move. In ordinary positions a quiet move is often good enough, which is what RL learned: its reward rose while its puzzle accuracy fell. Notebook 11 measures move quality in ordinary positions, which is closer to what DPO and RL were trained for.
+2. **The training signal and the test measure different things.** All training positions come from ordinary games, and the DPO pairs and RL reward favor moves that avoid large centipawn losses. Puzzles require one forcing tactical move. In ordinary positions a quiet move is often good enough, which is what RL learned: its reward rose while its puzzle accuracy fell. Notebook 11 confirms this in ordinary positions: the RL models' legal moves lose significantly fewer centipawns than `sft_v1`'s, but they play Stockfish's best move less often (see 11 below).
 3. **The fixes worked only partly.** The SFT loss kept DPO from lowering the best move's probability but did not raise it; the KL penalty slowed RL's drift away from SFT but β = 0.04 did not stop it.
 
 These motivate notebooks 12 (a stronger SFT starting point), 13 (separating "knowing which moves are legal" from "choosing a good one"), and 14 (a larger KL penalty).
@@ -361,7 +361,33 @@ These are the two evaluations our progress report committed to. They run on ever
 - **Full games:** 50 games per model against each of two opponents: a player that moves at random (the weakest possible opponent) and Stockfish searching to depth 1 (shallow, but far stronger than our models). Games start after the first three moves of 25 different held-out games, and each opening is played once with each color. An illegal or unparseable answer is replaced by a random legal move and counted, so every game finishes. A game still going after 100 moves counts as a draw. We report wins, draws, losses, the score ((wins + ½ draws) / games), and the share of invalid moves over whole games.
 - **Why it matters:** DPO and RL were trained on ordinary game positions to avoid bad moves, not to solve puzzles. These two evaluations measure exactly that, so they are the fairer test of what DPO and RL changed. It is possible that a model with lower puzzle accuracy makes fewer blunders in ordinary positions; this is what the comparison will show.
 - **Outputs:** `results/positions_summary.csv` and `results/games_summary.csv` (one row per model, and per opponent), `results/<model>_positions.json` and `results/<model>_games.json` (every answer and every game, as PGN that any chess site can replay), and in `results/figures/game_evals/`: `game_positions` (table and figure: legal rate, ACPL, blunders, same move as Stockfish), `games_vs_random` and `games_vs_stockfish` (tables and figures: wins, draws, losses).
-- **Results:** pending (running as of Nov 22).
+- **Results (the nine models trained so far):**
+
+  | Model | Legal | Same move as Stockfish | Same move as the player | ACPL on legal answers (cp) | Blunders among legal answers | Invalid moves in games (vs. random / vs. Stockfish) |
+  |---|---|---|---|---|---|---|
+  | base | 40.4% | 2.7% | 2.6% | 344 | 47% | 77% / 78% |
+  | `sft_v1` | 64.7% | 6.5% | 6.8% | 392 | 55% | 40% / 61% |
+  | `sft_stockfish` | 65.2% | 6.9% | 5.9% | 414 | 58% | 37% / 58% |
+  | `dpo_v1` | 55.4% | 5.2% | 5.4% | 397 | 55% | 47% / 71% |
+  | `dpo_v2` | 57.8% | 4.2% | 4.1% | 346 | 52% | 58% / 65% |
+  | `dpo_v3` | 65.9% | 6.1% | 6.6% | 389 | 55% | 38% / 61% |
+  | `grpo_v1` | 81.5% | 2.5% | 3.7% | 322 | 47% | 51% / 60% |
+  | `grpo_v2` | 78.2% | 3.2% | 4.5% | 336 | 49% | 44% / 62% |
+  | `grpo_v3` | 78.6% | 3.5% | 4.6% | 335 | 47% | 43% / 60% |
+  | random legal move | 100% | 5.3% | 6.5% | 391 | 56% | – |
+
+  1. **The puzzle ranking holds in ordinary positions.** As on puzzles, the SFT models and `dpo_v3` most often play Stockfish's move, and the RL models least often. `sft_v1`, `sft_stockfish` and `dpo_v3` do not differ significantly from each other (for example `sft_v1` vs. `sft_stockfish`: 28 positions where only `sft_v1` plays Stockfish's move, 32 where only `sft_stockfish` does, p = 0.7), while `sft_v1` is significantly ahead of `grpo_v2` (55 vs. 22, p = 0.0002). The conclusions from notebooks 08–10 therefore do not depend on puzzles being an unusual test.
+  2. **RL changed the kind of move, not the strength.** The RL models answer legally more often, and their legal moves lose fewer centipawns (ACPL about 330 vs. 392 for `sft_v1`). This is not only because they answer legally in different positions: on the positions where both `sft_v1` and `grpo_v2` answer legally, `grpo_v2` loses on average 52 cp less (95% bootstrap interval 24–79 cp). But they match Stockfish's best move less often. RL learned to avoid losing material, which is what its reward pays for, rather than to find the best move. This is the clearest evidence that our post-training optimized something other than what puzzles measure (point 2 of "Why post-training has not beaten SFT so far" above).
+  3. **Even the best models are only slightly above a random legal move.** They play Stockfish's move in 6.5–6.9% of positions vs. 5.3% for a random legal move, a difference within the margin of error at 1,000 positions (about ±1.5 points). Their legal moves are blunders (200+ cp lost) about as often as random moves (55–58% vs. 56%). `sft_stockfish`'s training did not change this: it matches Stockfish slightly more and the player slightly less than `sft_v1`, but neither difference is significant.
+  4. **Full games do not separate the models, because most of their moves are invalid.** Against Stockfish (depth 1), every model loses 45–48 of 50 games and wins none. Against the random player, 43–49 of 50 games are draws: they reach the 100-move limit or end by threefold repetition (the trained models often move a piece back and forth). Over whole games, 37–78% of the models' moves were illegal or unparseable and were replaced by a random legal move, far more than in single positions (35% for `sft_v1`), because games reach positions unlike the training data. With half the moves random, a difference of one to three games between models is noise. The finding for the paper is that none of the models can play legal chess over a whole game; `sft_stockfish` has the fewest invalid moves (37% against the random player). Notebook 13 targets exactly this failure.
+
+![Legal-move rate, ACPL, blunder rate and Stockfish-match rate of every model on 1,000 held-out game positions](../results/figures/game_evals/game_positions.png)
+
+*`results/figures/game_evals/game_positions.png`.* One bar per model, with a random legal move as the last bar. Left to right: legal answers (higher is better), ACPL of the legal answers (lower is better), blunders as a share of all answers (an illegal answer is not counted as a blunder, so a model with many illegal answers has fewer blunders here; the table above gives the blunder rate among legal answers), and how often the answer is Stockfish's move. The RL models (`grpo_*`) have the most legal answers and the lowest ACPL, but the lowest Stockfish match. In this version the model names on the x-axis overlap; the figure is redrawn with a clearer layout when notebook 11 is rerun for the new models.
+
+![Wins, draws and losses of every model in 50 games against Stockfish at depth 1](../results/figures/game_evals/games_vs_stockfish.png)
+
+*`results/figures/game_evals/games_vs_stockfish.png`.* Share of the 50 games against Stockfish (depth 1) won (green), drawn (grey) and lost (red). No model wins a game; the 2–5 draws per model are all threefold repetitions. `games_vs_random.png` shows the same for the random opponent, where almost all games are draws.
 
 ### 12 · SFT with more training data (`sft_100k`)
 

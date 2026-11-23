@@ -40,7 +40,7 @@ This project studies how post-training methods improve a small language model's 
 | 08 | SFT on Stockfish's moves (`sft_stockfish`) | done: 7.3%, no significant difference from SFT |
 | 09 | DPO on the SFT model's own mistakes (`dpo_v2`), plus an SFT loss (`dpo_v3`) | done: 4.4% and 6.7% |
 | 10 | RL with a KL penalty (`grpo_v2`), plus a new reward (`grpo_v3`) | done: 4.9% and 4.2% |
-| 11 | Every model on held-out game positions and in full games | running for the 9 models above; rerun after each new round |
+| 11 | Every model on held-out game positions and in full games | done for the 9 models above: same ranking as on puzzles; RL loses fewer centipawns but finds Stockfish's move less often; no model wins a game against Stockfish. Rerun after each new round |
 | 12 | SFT on 100,000 positions instead of 20,000 (`sft_100k`), with a data-scaling curve | ready to run |
 | 13 | Legal moves listed in the prompt (`sft_legal_moves`, `base_legal_moves`) | ready to run |
 | 14 | RL with a larger KL penalty, β = 0.1 and 0.2 (`grpo_v4`, `grpo_v5`) | ready to run |
