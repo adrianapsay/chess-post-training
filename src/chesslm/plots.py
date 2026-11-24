@@ -1,5 +1,7 @@
 """Figures for comparing runs. One shared style so every figure in the report looks the same."""
 
+from contextlib import contextmanager
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -9,6 +11,37 @@ import pandas as pd
 COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#8a5cc7", "#1f9fb4", "#c8423b", "#7a7872"]
 SURFACE, TEXT, MUTED, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e6e5e0"
 BANDS = ["<1200", "1200-1800", "1800-2400", "2400+"]
+
+# Text and marker sizes are multiplied by these. paper_style() lowers them for figures printed at their real size.
+_TEXT_SCALE, _MARK_SCALE = 1.0, 1.0
+
+
+def _fs(size):
+    return size * _TEXT_SCALE
+
+
+def _ms(size):
+    return size * _MARK_SCALE
+
+
+@contextmanager
+def paper_style(text=0.8, marks=0.6):
+    """Figures for the paper, drawn at their printed size (one ICML column = 3.25 in, both columns = 6.75 in).
+
+    Inside `with plots.paper_style():`, text is about 6.5-8 pt and markers and lines are thinner, so a figure
+    reads well without being shrunk. Outside it, every figure is drawn exactly as before.
+    """
+    global _TEXT_SCALE, _MARK_SCALE, SURFACE
+    old = _TEXT_SCALE, _MARK_SCALE, SURFACE
+    _TEXT_SCALE, _MARK_SCALE, SURFACE = text, marks, "#ffffff"  # white, like the page
+    try:
+        with plt.rc_context({"font.size": 10 * text, "axes.labelsize": 10 * text, "xtick.labelsize": 9 * text,
+                             "ytick.labelsize": 9 * text, "legend.fontsize": 8.5 * text, "axes.linewidth": 0.6,
+                             "xtick.major.width": 0.6, "ytick.major.width": 0.6, "lines.linewidth": 1.4,
+                             "pdf.fonttype": 42}):
+            yield
+    finally:
+        _TEXT_SCALE, _MARK_SCALE, SURFACE = old
 
 
 def _style(ax, ylabel):
@@ -329,51 +362,72 @@ def scaling_curves(tables, panels, references, path, title=None):
     return _finish(fig, path, title)
 
 
-def paired_effects(effects, panels, path, title=None, note=None):
+def paired_effects(effects, panels, path, title=None, note=None, figsize=None):
     """The effect of each change as a dot with its 95% interval, one row per change and one panel per measure.
 
     effects: one dict per change, with "label" and, for each panel key, an (average, low, high) tuple
     (or Nones if not measured). panels = [(key, axis label, number format)]. A filled dot means the
     interval excludes 0. Right is better in every panel.
+    Optional keys of each change: "group" (consecutive changes with the same group are drawn under a bold
+    header), "color" (of its dot and line), and "star" (adds * to its value in the first panel, e.g. for a
+    difference that stays significant after Holm's adjustment).
     """
-    fig, axes = plt.subplots(1, len(panels), figsize=(4.3 * len(panels) + 2.2, 0.55 * len(effects) + 1.6),
+    rows, last_group = [], None  # (label, change or None for a group header)
+    for effect in effects:
+        if effect.get("group") is not None and effect["group"] != last_group:
+            rows.append((effect["group"], None))
+            last_group = effect["group"]
+        rows.append((effect["label"], effect))
+    fig, axes = plt.subplots(1, len(panels), figsize=figsize or (4.3 * len(panels) + 2.2, 0.55 * len(rows) + 1.6),
                              facecolor=SURFACE, sharey=True, squeeze=False)
-    ys = np.arange(len(effects))[::-1]
-    for ax, (key, label, fmt) in zip(axes[0], panels):
+    ys = np.arange(len(rows))[::-1]
+    for i, (ax, (key, label, fmt)) in enumerate(zip(axes[0], panels)):
         _style(ax, "")
         ax.grid(axis="y", visible=False)
         ax.grid(axis="x", color=GRID, linewidth=0.8)
         ax.axvline(0, color=MUTED, linewidth=1)
-        for y, effect in zip(ys, effects):
+        for y, (_, effect) in zip(ys, rows):
+            if effect is None:
+                continue
             mean, low, high = effect.get(key, (None, None, None))
             if mean is None:
                 ax.annotate("not measured yet", (0, y), xytext=(4, 0), textcoords="offset points", va="center",
-                            fontsize=7, color=MUTED)
+                            fontsize=_fs(7), color=MUTED)
                 continue
+            color = effect.get("color", COLORS[0])
             clear = low > 0 or high < 0
-            ax.plot([low, high], [y, y], color=COLORS[0], linewidth=2, solid_capstyle="round")
-            ax.plot(mean, y, "o", markersize=7, color=COLORS[0] if clear else SURFACE, markeredgecolor=COLORS[0],
-                    markeredgewidth=2)
-            ax.annotate(fmt.format(mean), (high, y), xytext=(5, 0), textcoords="offset points", va="center",
-                        fontsize=7, color=TEXT)
-        ax.set_xlabel(label + "\nbetter →", color=MUTED, fontsize=9)
+            ax.plot([low, high], [y, y], color=color, linewidth=_ms(2), solid_capstyle="round")
+            ax.plot(mean, y, "o", markersize=_ms(7), color=color if clear else SURFACE, markeredgecolor=color,
+                    markeredgewidth=_ms(2))
+            text = fmt.format(mean) + ("*" if i == 0 and effect.get("star") else "")
+            ax.annotate(text, (high, y), xytext=(5 * _TEXT_SCALE, 0), textcoords="offset points", va="center",
+                        fontsize=_fs(7), color=TEXT)
+        ax.set_xlabel(label + "\nbetter →", color=MUTED, fontsize=_fs(9))
         left, right = ax.get_xlim()
         ax.set_xlim(left, right + (right - left) * 0.15)
-    axes[0][0].set_yticks(ys, [effect["label"] for effect in effects], fontsize=8)
+    axes[0][0].set_yticks(ys, [row_label for row_label, _ in rows], fontsize=_fs(8))
+    for tick, (_, effect) in zip(axes[0][0].get_yticklabels(), rows):
+        if effect is None:
+            tick.set_fontweight("bold")
+            tick.set_color(TEXT)
     if note:
-        fig.text(0.01, 0.005, note, fontsize=8, color=MUTED)
+        fig.text(0.01, 0.005, note, fontsize=_fs(8), color=MUTED)
     return _finish(fig, path, title)
 
 
-def two_by_two(table, rows, columns, metrics, path, title=None, references=None):
-    """A 2 x 2 design as lines: one line per row of the design, its two columns on the x-axis.
+def two_by_two(table, rows, columns, metrics, path, title=None, references=None, figsize=None, values=True,
+               colors=None, legend_loc="lower right"):
+    """A 2 x 2 design as lines: one line per row of the design, its columns on the x-axis (two or more).
 
     table: one row per model, with each metric's value and its interval as "<metric>", "<metric> low",
-    "<metric> high" (in %). rows = {line label: [model in column 1, model in column 2]}; columns = the two
+    "<metric> high" (in %). rows = {line label: [model in column 1, model in column 2, ...]}; columns = the
     x-axis labels; metrics = [(metric, axis label)]. references = {metric: (label, value)} for a dashed line.
+    values=False leaves out the number next to each point; colors = one color per line.
     Models missing from the table are left out.
     """
-    fig, axes = plt.subplots(1, len(metrics), figsize=(4 * len(metrics), 3.9), facecolor=SURFACE, squeeze=False)
+    colors = colors or COLORS
+    fig, axes = plt.subplots(1, len(metrics), figsize=figsize or (4 * len(metrics), 3.9), facecolor=SURFACE,
+                             squeeze=False)
     for ax, (metric, ylabel) in zip(axes[0], metrics):
         _style(ax, ylabel)
         for i, (label, models) in enumerate(rows.items()):
@@ -382,14 +436,14 @@ def two_by_two(table, rows, columns, metrics, path, title=None, references=None)
             if not points:
                 continue
             xs = [x for x, _ in points]
-            values = [row[metric] for _, row in points]
+            ys = [row[metric] for _, row in points]
             errors = [[row[metric] - row[f"{metric} low"] for _, row in points],
                       [row[f"{metric} high"] - row[metric] for _, row in points]]
-            ax.errorbar(xs, values, yerr=errors, color=COLORS[i], marker="o", markersize=8, linewidth=2, capsize=3,
-                        label=label)
-            for x, v in zip(xs, values):
+            ax.errorbar(xs, ys, yerr=errors, color=colors[i], marker="o", markersize=_ms(8), linewidth=_ms(2),
+                        capsize=_ms(3), label=label)
+            for x, v in zip(xs, ys if values else []):
                 ax.annotate(f"{v:.1f}", (x, v), xytext=(9 if i else -9, 0), textcoords="offset points",
-                            ha="left" if i else "right", va="center", fontsize=8, color=TEXT,
+                            ha="left" if i else "right", va="center", fontsize=_fs(8), color=TEXT,
                             bbox=dict(boxstyle="square,pad=0.15", fc=SURFACE, ec="none"))
         if references and metric in references:
             ref_label, value = references[metric]
@@ -397,42 +451,238 @@ def two_by_two(table, rows, columns, metrics, path, title=None, references=None)
         ax.set_xticks(range(len(columns)), columns)
         ax.set_xlim(-0.45, len(columns) - 0.55)
         ax.set_ylim(bottom=0)
-    axes[0][0].legend(frameon=False, fontsize=8, loc="lower right")
+    axes[0][0].legend(frameon=False, fontsize=_fs(8), loc=legend_loc)
     return _finish(fig, path, title)
 
 
-def tradeoff_map(points, path, title=None, reference="sft_v1", offsets=None, groups=None):
+def tradeoff_map(points, path, title=None, reference="sft_v1", offsets=None, groups=None, figsize=None,
+                 labels=None, colors=None, xlabel=None, ylabel=None, legend_loc="lower left"):
     """Each model as a dot: centipawns saved (x) against the change in Stockfish match (y), both vs. one reference.
 
     points: one row per model with columns cp, cp low, cp high, sf, sf low, sf high and group (for the color
     and the legend). offsets = {model: (dx, dy)} moves a label away from its dot (in points).
-    groups = the legend order of the groups (default: as they appear).
+    groups = the legend order of the groups (default: as they appear). labels = the models to name (default:
+    all). colors = {group: color} (default: the shared colors in the order of `groups`).
     """
     offsets = offsets or {}
     groups = groups or list(dict.fromkeys(points.group))
-    color = {group: COLORS[i % len(COLORS)] for i, group in enumerate(groups)}
-    fig, ax = plt.subplots(figsize=(9, 6.8), facecolor=SURFACE)
-    _style(ax, f"same move as Stockfish vs. {reference} (percentage points)\nfinds the best move more often ↑")
+    color = colors or {group: COLORS[i % len(COLORS)] for i, group in enumerate(groups)}
+    fig, ax = plt.subplots(figsize=figsize or (9, 6.8), facecolor=SURFACE)
+    _style(ax, ylabel or f"same move as Stockfish vs. {reference} (percentage points)\nfinds the best move more often ↑")
     ax.grid(axis="x", color=GRID, linewidth=0.8)
     ax.axhline(0, color=MUTED, linewidth=1)
     ax.axvline(0, color=MUTED, linewidth=1)
     for model, row in points.iterrows():
         c = color[row.group]
         ax.errorbar(row.cp, row.sf, xerr=[[row.cp - row["cp low"]], [row["cp high"] - row.cp]],
-                    yerr=[[row.sf - row["sf low"]], [row["sf high"] - row.sf]], color=c, alpha=0.35, linewidth=1,
-                    capsize=0, zorder=1)
-        ax.plot(row.cp, row.sf, "o", color=c, markersize=9, markeredgecolor=SURFACE, markeredgewidth=2, zorder=3)
-        dx, dy = offsets.get(model, (6, 4))
-        ax.annotate(model, (row.cp, row.sf), xytext=(dx, dy), textcoords="offset points", fontsize=8, color=TEXT,
-                    ha="left" if dx >= 0 else "right", zorder=4)
-    ax.plot(0, 0, "o", color=SURFACE, markersize=9, markeredgecolor=TEXT, markeredgewidth=1.5, zorder=3)
-    ax.annotate(f"{reference} (reference)", (0, 0), xytext=(-8, -12), textcoords="offset points", fontsize=8,
-                ha="right", color=TEXT)
-    ax.set_xlabel(f"centipawns saved per legal move vs. {reference} (positions both answered legally)\n"
+                    yerr=[[row.sf - row["sf low"]], [row["sf high"] - row.sf]], color=c, alpha=0.35,
+                    linewidth=1, capsize=0, zorder=1)
+        ax.plot(row.cp, row.sf, "o", color=c, markersize=_ms(9), markeredgecolor=SURFACE, markeredgewidth=_ms(2),
+                zorder=3)
+        if labels is None or model in labels:
+            dx, dy = offsets.get(model, (6, 4))
+            ax.annotate(model, (row.cp, row.sf), xytext=(dx * _TEXT_SCALE, dy * _TEXT_SCALE),
+                        textcoords="offset points", fontsize=_fs(8), color=TEXT, ha="left" if dx >= 0 else "right",
+                        zorder=4)
+    ax.plot(0, 0, "o", color=SURFACE, markersize=_ms(9), markeredgecolor=TEXT, markeredgewidth=1.5, zorder=3)
+    ax.annotate(f"{reference} (reference)", (0, 0), xytext=(-8 * _TEXT_SCALE, -12 * _TEXT_SCALE),
+                textcoords="offset points", fontsize=_fs(8), ha="right", color=TEXT)
+    ax.set_xlabel(xlabel or f"centipawns saved per legal move vs. {reference} (positions both answered legally)\n"
                   "loses fewer centipawns →", color=MUTED)
-    handles = [plt.Line2D([], [], marker="o", linestyle="", color=color[g], markersize=8) for g in groups]
-    ax.legend(handles, groups, frameon=False, fontsize=8, loc="lower left")
+    handles = [plt.Line2D([], [], marker="o", linestyle="", color=color[g], markersize=_ms(8)) for g in groups]
+    ax.legend(handles, groups, frameon=False, fontsize=_fs(8), loc=legend_loc)
     return _finish(fig, path, title)
+
+
+def dumbbells(rows, panels, path, title=None, figsize=None, legend=("start model", "after training"),
+              legend_panel=-1, legend_loc="lower right"):
+    """Before and after for several runs: one row per run, one panel per measure, an arrow from before to after.
+
+    rows: one dict per run with "label", optionally "color", and for each panel key a (before, after) pair.
+    panels = [(key, axis label)]. The legend goes in panel number `legend_panel` (default: the last).
+    """
+    fig, axes = plt.subplots(1, len(panels), figsize=figsize or (4 * len(panels) + 2, 0.45 * len(rows) + 1.3),
+                             facecolor=SURFACE, sharey=True, squeeze=False)
+    ys = np.arange(len(rows))[::-1]
+    for ax, (key, label) in zip(axes[0], panels):
+        _style(ax, "")
+        ax.grid(axis="y", visible=False)
+        ax.grid(axis="x", color=GRID, linewidth=0.8)
+        for y, row in zip(ys, rows):
+            before, after = row[key]
+            color = row.get("color", COLORS[0])
+            ax.annotate("", xy=(after, y), xytext=(before, y), zorder=2,
+                        arrowprops=dict(arrowstyle="-|>", color=color, linewidth=_ms(2), shrinkA=0,
+                                        shrinkB=_ms(4), mutation_scale=_ms(12)))
+            ax.plot(before, y, "o", color=SURFACE, markeredgecolor=color, markeredgewidth=_ms(2), markersize=_ms(7),
+                    zorder=3)
+            ax.plot(after, y, "o", color=color, markersize=_ms(7), zorder=3)
+        ax.set_xlabel(label, color=MUTED)
+        left, right = ax.get_xlim()
+        ax.set_xlim(min(left, 0), right + (right - left) * 0.05)
+    axes[0][0].set_yticks(ys, [row["label"] for row in rows], fontsize=_fs(8))
+    handles = [plt.Line2D([], [], marker="o", linestyle="", color=SURFACE, markeredgecolor=MUTED,
+                          markeredgewidth=_ms(2), markersize=_ms(7)),
+               plt.Line2D([], [], marker="o", linestyle="", color=MUTED, markersize=_ms(7))]
+    axes[0][legend_panel].legend(handles, legend, frameon=False, fontsize=_fs(8), loc=legend_loc)
+    return _finish(fig, path, title)
+
+
+def model_tree(nodes, edges, path, title=None, figsize=(10, 4), colors=None, legend=None):
+    """Which model each model was trained from, as boxes and arrows.
+
+    nodes = {name: (x, y, description, group)}, with x and y in inches from the lower left of the figure; the
+    name is drawn in a box and the description after it. edges = [(parent, child)]: an arrow from the end of the
+    parent's description to the child's box. colors = {group: color}; legend = groups to list in the legend.
+    """
+    colors = colors or {}
+    width, height = figsize
+    fig = plt.figure(figsize=figsize, facecolor=SURFACE, dpi=300)  # measured at print resolution
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_xlim(0, width)
+    ax.set_ylim(0, height)
+    ax.axis("off")
+    boxes, notes = {}, {}
+    for name, (x, y, description, group) in nodes.items():
+        color = colors.get(group, COLORS[0])
+        boxes[name] = ax.text(x, y, name, ha="left", va="center", fontsize=_fs(8), color=TEXT, family="monospace",
+                              bbox=dict(boxstyle="round,pad=0.25", fc=SURFACE, ec=color, lw=_ms(2)))
+        if description:
+            notes[name] = description
+    fig.canvas.draw()  # places the boxes, so their sizes can be measured
+    renderer = fig.canvas.get_renderer()
+    to_data = ax.transData.inverted()
+
+    def extent(artist):
+        (x0, y0), (x1, y1) = to_data.transform(artist.get_window_extent(renderer).get_points())
+        return x0, x1
+
+    right_end = {}
+    for name, box in boxes.items():
+        x0, x1 = extent(box.get_bbox_patch())
+        right_end[name] = x1
+        if name in notes:
+            note = ax.text(x1 + 0.05, nodes[name][1], notes[name], ha="left", va="center", fontsize=_fs(7.5),
+                           color=MUTED)
+            right_end[name] = extent(note)[1]
+    children = {}
+    for parent, child in edges:
+        children.setdefault(parent, []).append(child)
+    line = dict(color=MUTED, linewidth=0.7)
+    for parent, kids in children.items():  # a line from the parent to a vertical trunk, then an arrow to each child
+        lefts = {kid: extent(boxes[kid].get_bbox_patch())[0] - 0.02 for kid in kids}
+        trunk = min(lefts.values()) - 0.1
+        y_parent = nodes[parent][1]
+        ys = [nodes[kid][1] for kid in kids] + [y_parent]
+        ax.plot([right_end[parent] + 0.04, trunk], [y_parent, y_parent], **line)
+        ax.plot([trunk, trunk], [min(ys), max(ys)], **line)
+        for kid in kids:
+            ax.annotate("", xy=(lefts[kid], nodes[kid][1]), xytext=(trunk, nodes[kid][1]),
+                        arrowprops=dict(arrowstyle="-|>", shrinkA=0, shrinkB=0, mutation_scale=_ms(10), **line))
+    if legend:
+        handles = [plt.Line2D([], [], marker="s", linestyle="", markerfacecolor=SURFACE, markeredgecolor=colors[g],
+                              markeredgewidth=_ms(2), markersize=_ms(9)) for g in legend]
+        ax.legend(handles, legend, frameon=False, fontsize=_fs(7.5), loc="upper right")
+    if title:
+        fig.suptitle(title, color=TEXT, fontsize=_fs(11))
+    fig.savefig(path, dpi=200)  # no tight_layout: the boxes are placed in inches on purpose
+    return fig
+
+
+def dpo_probability_ratios(logs, beta, path, title=None, figsize=(7, 3.2), colors=None):
+    """During DPO training: the probability of the chosen (solid) and rejected (dashed) answers relative to the
+    starting SFT model, for several runs, on a log scale (1x = unchanged). logs = {run label: training log}."""
+    colors = colors or COLORS
+    fig, ax = plt.subplots(figsize=figsize, facecolor=SURFACE)
+    for color, (name, log) in zip(colors, logs.items()):
+        rows = log.dropna(subset=["rewards/chosen"])
+        ax.plot(rows.step, np.exp(rows["rewards/chosen"] / beta), color=color, linewidth=_ms(2), label=name)
+        ax.plot(rows.step, np.exp(rows["rewards/rejected"] / beta), color=color, linewidth=_ms(2), linestyle="--")
+    ax.axhline(1, color=MUTED, linewidth=1, linestyle=":")
+    ax.set_yscale("log")
+    ax.yaxis.set_major_formatter(lambda value, _: f"{value:g}×")
+    ax.set_xlabel("training step", color=MUTED)
+    styles = [plt.Line2D([], [], color=MUTED, linewidth=_ms(2)), plt.Line2D([], [], color=MUTED, linewidth=_ms(2),
+                                                                           linestyle="--")]
+    runs = [plt.Line2D([], [], color=c, linewidth=_ms(2)) for c, _ in zip(colors, logs)]
+    ax.legend(runs + styles, list(logs) + ["chosen (Stockfish's move)", "rejected (own mistake)"], frameon=False,
+              fontsize=_fs(8), loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2)  # above the plot
+    _style(ax, "probability vs. the SFT model")
+    return _finish(fig, path, title)
+
+
+LATEX_SYMBOLS = {"β": r"$\beta$", "†": r"$^\dagger$", "→": r"$\rightarrow$", "×": r"$\times$", "−": "$-$",
+                 "–": "--", "≤": r"$\leq$", "≥": r"$\geq$"}
+
+
+def latex_escape(text):
+    """Text that LaTeX prints as written: escapes & % $ # _ { } and turns symbols such as β into math."""
+    out = []
+    for char in str(text):
+        if char == "\\":
+            out.append(r"\textbackslash{}")
+        elif char in "&%$#_{}":
+            out.append("\\" + char)
+        else:
+            out.append(LATEX_SYMBOLS.get(char, char))
+    return "".join(out)
+
+
+def _number(value):
+    try:
+        return float(str(value).rstrip("*†").strip())
+    except ValueError:
+        return None
+
+
+def latex_table(table, path, caption, label, groups=None, bold=None, bold_skip=(), wide=True, column_groups=None,
+                size=r"\footnotesize", column_gap="4pt"):
+    """Write `table` as a LaTeX table (booktabs) for the paper, so no number is typed by hand. Returns the text.
+
+    caption and label are LaTeX, written as given. The index is the first column.
+    groups = [(header, [index labels])] draws a header row before each group of rows (default: no headers).
+    column_groups = [(header, number of columns)], counting the index column, adds a header above the column
+    names (e.g. "Puzzles" over three columns); an empty header leaves its columns without one.
+    bold = {column: "max" or "min"}: the best value in that column is bold, ignoring the rows in bold_skip.
+    Numeric columns are right-aligned. size and column_gap keep a wide table within the page.
+    """
+    groups = groups or [(None, list(table.index))]
+    best = {}
+    for column, direction in (bold or {}).items():
+        values = {i: _number(v) for i, v in table[column].items() if i not in bold_skip and _number(v) is not None}
+        if values:
+            target = max(values.values()) if direction == "max" else min(values.values())
+            best[column] = {i for i, v in values.items() if v == target}
+    numeric = [all(_number(v) is not None or str(v) in ("", "–", "-") for v in table[c]) for c in table.columns]
+    spec = "l" + "".join("r" if n else "l" for n in numeric)
+    header = " & ".join([latex_escape(table.index.name or "")] + [latex_escape(c) for c in table.columns])
+    lines = [r"\begin{table*}[t]" if wide else r"\begin{table}[t]", r"\centering", size,
+             rf"\setlength{{\tabcolsep}}{{{column_gap}}}", rf"\caption{{{caption}}}", rf"\label{{{label}}}",
+             rf"\begin{{tabular}}{{{spec}}}", r"\toprule"]
+    if column_groups:
+        cells, rules, start = [], [], 1
+        for text, span in column_groups:
+            cells.append(rf"\multicolumn{{{span}}}{{c}}{{{latex_escape(text)}}}" if text else " & ".join([""] * span))
+            if text:
+                rules.append(rf"\cmidrule(lr){{{start}-{start + span - 1}}}")
+            start += span
+        lines += [" & ".join(cells) + r" \\", " ".join(rules)]
+    lines.append(header + r" \\")
+    for group_header, members in groups:
+        lines.append(r"\midrule")
+        if group_header:
+            lines.append(rf"\multicolumn{{{len(table.columns) + 1}}}{{l}}{{\emph{{{latex_escape(group_header)}}}}} \\")
+        for index in members:
+            cells = [latex_escape(index)]
+            for column in table.columns:
+                cell = latex_escape(table.loc[index, column])
+                cells.append(rf"\textbf{{{cell}}}" if index in best.get(column, ()) else cell)
+            lines.append(" & ".join(cells) + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}", r"\end{table*}" if wide else r"\end{table}"]
+    text = "\n".join(lines) + "\n"
+    with open(path, "w") as f:
+        f.write(text)
+    return text
 
 
 def grouped_bars(table, xlabel, path, title=None, colors=None, fmt="{:.0f}"):
