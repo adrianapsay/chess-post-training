@@ -237,7 +237,21 @@ This section held the data and method facts for the four progress-report models.
 
 ## 8. The paper: Abstract to Methods
 
-Sections 8 and 9 follow the paper's sections and hold what each one needs. The paper has at most 8 pages, references not counted: Abstract to Background about 2 pages, Methods and Evaluation 5, Conclusions 1. **Anything removed from sections 8 and 9 is left out of the paper** (list at the end of section 9). Every citation must be checked. The figures and Table 1 are in `results/figures/paper/` (notebook 16, section 11): a `.pdf` for Overleaf and a `.png` to view. No other figure goes in the paper.
+Sections 8 and 9 follow the paper's sections and hold what each one needs. The paper has at most 8 pages, references not counted: Abstract to Background about 2 pages, Methods and Evaluation 5, Conclusions 1. **Anything removed from sections 8 and 9 is left out of the paper.** Every citation must be checked.
+
+**The figures and the table for the paper: [`results/figures/paper/`](../results/figures/paper/).** This folder holds exactly what goes in the paper, and nothing else:
+
+| In the paper | File | Width |
+|---|---|---|
+| Fig. 1 | `fig1_models.pdf` | both columns |
+| Table 1 | `table1_models.tex` (LaTeX to paste; `table1_models.md` to view) | both columns |
+| Fig. 2 | `fig2_effects.pdf` | both columns |
+| Fig. 3 | `fig3_sft.pdf` | one column |
+| Fig. 4 | `fig4_dpo.pdf` | one column |
+| Fig. 5 | `fig5_rl.pdf` | both columns |
+| Fig. 6 | `fig6_tradeoff.pdf` | one column |
+
+Each figure is there as a `.pdf` (use this in Overleaf) and a `.png` (a preview, to view on GitHub). Notebook 16 (section 11) draws them from the results, so their numbers match these notes. No other figure in `results/figures/` goes in the paper.
 
 **Getting the figures and Table 1 into Overleaf**
 1. **Use the `.pdf` files.** They stay sharp at any size and are already sized for ICML; the `.png` files are previews.
@@ -462,22 +476,3 @@ Every comparison is paired, on the same 1,000 puzzles or 1,000 positions. Fig. 2
 - The dropped comparisons: ChessQA and ChessLLM's evaluation.
 
 **Fix in the current draft:** replace the lorem ipsum.
-
-### Removed from the paper
-
-Removed from sections 8 and 9 because the paper does not need them, so also **left out of the paper**. None of them is in the current draft. None changes a finding: each is a detail behind a finding that keeps its main evidence, or a number that Table 1 or a figure already shows. Every number still exists in the file named.
-
-| Removed | Why it can go | Where it still is |
-|---|---|---|
-| The copies saved partway through the 100k runs, their scores, the learning-rate caveat, and `scaling_curves.png` | `sft_v1` vs. `sft_100k` is the clean comparison of data sizes | `results/sft_100k*_at_*k.json`; notebooks 12, 12b, 13b |
-| Accuracy by rating band (the bands stay in the data description) | no finding depends on it | `results/summary.csv`; `accuracy_by_band.png` per model |
-| Where in the list the models' answers fall; the untrained model picks the first listed move 11.6% of the time | "the list needs training" rests on 6.0% = random | notebook 13 |
-| The cost of the longer prompt; GPU-hours per run, and `sft_v1`'s inflated laptop hours | training tokens per model are in Table 1; the total stays | notebook 13; `results/figures/final/compute.md` |
-| DPO pair and training details: the SFT models' mistake rates (59.9%, 47.9%), the 680 cp median, the training-pair preference (83%, 91%), `sft_legal_moves`' starting log-probability (−3.26) | finding 3 keeps the pair composition, the held-out preference and the log-probabilities that explain it | notebooks 09 and 15; `results/dpo_v*_training.json` |
-| RL details: the reward-curve figure, the checks and captures at each β | pawn moves, mates in one and the KL values show the shift | `results/figures/combinations/`; `results/figures/final/move_kinds.md` |
-| "Same move as the player" (except the check in finding 2) | not one of the paper's measures | `results/figures/game_evals/game_positions.md` |
-| Game details: losses, draws by repetition or the move limit, the best model's 19 draws, `sft_legal_rl`'s 10 wins (p = 0.07), each model's invalid-move rate, the game figures | games get 2–3 sentences; no game result is significant | `results/figures/game_evals/`; `results/figures/final/invalid_moves.md` |
-| The "solved only by one model / only by the other" counts, and the p-values of comparisons that Fig. 2 shows with intervals (e.g. 0.067, 0.13, 0.012, 0.037, 0.011) | Fig. 2 shows each difference with its interval and marks what survives Holm | `results/figures/final/effects.md`, `vs_sft_v1.md` |
-| Secondary numbers: the best model's gain over `sft_100k` split by legality (214 / 786 puzzles); `sft_100k`'s legal rate on positions and the p-value of its blunder rate (0.03); `grpo_v2`'s 52 cp; the two RL combinations being identical (p = 1.0); accuracy when legal for the SFT models; 08's early reading that 20,000 examples teach the format, not the best move | each finding keeps its main evidence; the rest is in Table 1 or Fig. 2 | notebooks 12, 13b, 15; `results/figures/final/` |
-| The all-models table, the design-choices table and the notebook-by-notebook record of the earlier notes | their numbers are in Table 1, their reasons in Methods, their results in Evaluation | git history of these notes |
-| Figures not in the paper: `final/accuracy.png`, `final/accuracy_decomposition.png`, `final/invalid_moves.png`, `final/move_kinds.png`, `findings_08_14/legal_moves.png`, and the screen versions of Figs. 2–6 | the seven paper figures show the same results | `results/figures/` |
