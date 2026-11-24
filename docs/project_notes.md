@@ -467,6 +467,7 @@ Every comparison is paired, on the same 1,000 puzzles or 1,000 positions. Fig. 2
 - Compute differs between methods (22.7M training tokens for the best SFT model, 3.4M for RL from `sft_v1`); Table 1 gives tokens per model.
 - Later experiments were chosen after seeing earlier test results; the main effects are large, survive Holm's adjustment, and agree with the dev puzzles and the game positions.
 - Full games are weak evidence: invalid answers are replaced by random moves, and Stockfish plays at depth 1.
+- DPO and RL were combined with `sft_legal_moves` (20,000 positions), the best model when they were designed, not with our strongest model, `sft_100k_legal_moves`; a stronger starting model might respond differently.
 
 **Future work**
 - A second seed for the main comparisons.
