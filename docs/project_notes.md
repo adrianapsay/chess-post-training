@@ -237,7 +237,7 @@ This section held the data and method facts for the four progress-report models.
 
 ## 8. The paper: Abstract to Methods
 
-Sections 8 and 9 follow the paper's sections and hold what each one needs. The paper has at most 8 pages, references not counted: Abstract to Background about 2 pages, Methods and Evaluation 5, Conclusions 1. **Anything removed from sections 8 and 9 is left out of the paper** (list at the end of section 9). Every citation must be checked by a person. The figures and Table 1 are in `results/figures/paper/` (notebook 16, section 11): a `.pdf` for Overleaf and a `.png` to view. No other figure goes in the paper.
+Sections 8 and 9 follow the paper's sections and hold what each one needs. The paper has at most 8 pages, references not counted: Abstract to Background about 2 pages, Methods and Evaluation 5, Conclusions 1. **Anything removed from sections 8 and 9 is left out of the paper** (list at the end of section 9). Every citation must be checked. The figures and Table 1 are in `results/figures/paper/` (notebook 16, section 11): a `.pdf` for Overleaf and a `.png` to view. No other figure goes in the paper.
 
 **Getting the figures and Table 1 into Overleaf**
 1. **Use the `.pdf` files.** They stay sharp at any size and are already sized for ICML; the `.png` files are previews.
